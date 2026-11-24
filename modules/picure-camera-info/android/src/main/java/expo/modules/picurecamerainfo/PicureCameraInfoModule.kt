@@ -4,9 +4,6 @@ import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Build
-import android.util.Range
-import android.util.Rational
-import android.view.View
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import kotlin.math.hypot
@@ -24,37 +21,6 @@ class PicureCameraInfoModule : Module() {
       val context = appContext.reactContext ?: return@Function null
       readBackCamera(context)
     }
-
-    // expo-camera ships precompiled, so its CameraX objects are reached by reflection.
-    Function("getExposureRange") { viewTag: Int ->
-      val state = cameraCall(viewTag, "getCameraInfo")?.let { call(it, "getExposureState") }
-        ?: return@Function null
-      @Suppress("UNCHECKED_CAST")
-      val range = call(state, "getExposureCompensationRange") as Range<Int>
-      val step = call(state, "getExposureCompensationStep") as Rational
-      mapOf(
-        "min" to range.lower,
-        "max" to range.upper,
-        "step" to step.toDouble(),
-        "supported" to (call(state, "isExposureCompensationSupported") as Boolean),
-      )
-    }
-
-    Function("setExposure") { viewTag: Int, index: Int ->
-      val control = cameraCall(viewTag, "getCameraControl") ?: return@Function false
-      control.javaClass.getMethod("setExposureCompensationIndex", Int::class.java)
-        .invoke(control, index)
-      true
-    }
-  }
-
-  private fun call(target: Any, method: String): Any? =
-    target.javaClass.getMethod(method).invoke(target)
-
-  private fun cameraCall(viewTag: Int, method: String): Any? {
-    val view = appContext.findView<View>(viewTag) ?: return null
-    val camera = call(view, "getCamera") ?: return null
-    return call(camera, method)
   }
 
   private fun readBackCamera(context: Context): Map<String, Any>? {

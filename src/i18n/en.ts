@@ -139,7 +139,6 @@ export const en = {
     grant: 'Allow camera',
     take: 'Take photo',
     grid: 'Grid',
-    exposure: 'Brightness',
     male: 'Male',
     female: 'Female',
     front: 'Front',

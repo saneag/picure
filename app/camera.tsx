@@ -1,9 +1,9 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Grid3x3, RotateCcw, Sun } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, Grid3x3, RotateCcw } from 'lucide-react-native';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { findNodeHandle, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,9 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { GridGuide } from '@/features/camera/GridGuide';
-import { ExposureSlider } from '@/features/camera/ExposureSlider';
 import { PoseMenu } from '@/features/camera/PoseMenu';
 import { SilhouetteGuide, type Pose } from '@/features/camera/SilhouetteGuide';
-import {
-  getBackCameraInfo,
-  getExposureRange,
-  setExposure,
-  type ExposureRange,
-} from '../modules/picure-camera-info';
+import { getBackCameraInfo } from '../modules/picure-camera-info';
 import { useDraft } from '@/features/collage/draft-context';
 import { newId } from '@/lib/id';
 import { storeCameraPhoto } from '@/services/file-storage';
@@ -61,9 +55,6 @@ export default function CameraScreen() {
   const [pose, setPose] = useState<Pose | null>(null);
   const [grid, setGrid] = useState(false);
   const [ratio, setRatio] = useState(1);
-  const [exposureOpen, setExposureOpen] = useState(false);
-  const [exposure, setExposureIndex] = useState(0);
-  const [exposureRange, setExposureRange] = useState<ExposureRange | null>(null);
   const startRatio = useRef(1);
 
   const pinch = Gesture.Pinch()
@@ -74,22 +65,6 @@ export default function CameraScreen() {
     .onUpdate((e) => {
       setRatio(Math.min(maxRatio, Math.max(1, startRatio.current * e.scale)));
     });
-
-  const cameraTag = () => (camera.current ? (findNodeHandle(camera.current) ?? null) : null);
-
-  // The camera forgets exposure when it restarts, so it is read and applied on every ready event.
-  const onCameraReady = () => {
-    const tag = cameraTag();
-    if (tag === null) return;
-    const range = getExposureRange(tag);
-    setExposureRange(range?.supported ? range : null);
-    if (range?.supported) setExposure(tag, exposure);
-  };
-
-  useEffect(() => {
-    const tag = cameraTag();
-    if (tag !== null && exposureRange) setExposure(tag, exposure);
-  }, [exposure]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const capture = async () => {
     if (busy || !camera.current) return;
@@ -132,7 +107,6 @@ export default function CameraScreen() {
             ref={camera}
             facing={facing}
             zoom={Math.min(1, ratio / maxRatio)}
-            onCameraReady={onCameraReady}
             style={{ flex: 1 }}
           />
         </View>
@@ -156,33 +130,10 @@ export default function CameraScreen() {
       >
         <Icon as={Grid3x3} className={grid ? 'text-primary' : 'text-white'} size={24} />
       </Pressable>
-      {exposureRange ? (
-        <Pressable
-          accessibilityLabel={t('camera.exposure')}
-          onPress={() => setExposureOpen((open) => !open)}
-          className="absolute right-4 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-          style={{ top: insets.top + 184 }}
-        >
-          <Icon
-            as={Sun}
-            className={exposure !== 0 || exposureOpen ? 'text-primary' : 'text-white'}
-            size={24}
-          />
-        </Pressable>
-      ) : null}
       <View
-        className="absolute inset-x-0 bottom-0 items-center gap-5 px-4"
+        className="absolute inset-x-0 bottom-0 items-center gap-5"
         style={{ paddingBottom: insets.bottom + 24 }}
       >
-        {exposureOpen && exposureRange ? (
-          <ExposureSlider
-            min={exposureRange.min}
-            max={exposureRange.max}
-            step={exposureRange.step}
-            value={exposure}
-            onChange={setExposureIndex}
-          />
-        ) : null}
         <View className="flex-row gap-2 rounded-full bg-black/40 p-1">
           {presets.map((preset) => {
             const active = Math.abs(ratio - preset) < 0.05;
@@ -211,10 +162,7 @@ export default function CameraScreen() {
             size="icon"
             accessibilityLabel="flip"
             className="absolute right-8 bg-white/25"
-            onPress={() => {
-              setExposureIndex(0);
-              setFacing((f) => (f === 'back' ? 'front' : 'back'));
-            }}
+            onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
           >
             <Icon as={RotateCcw} className="text-white" />
           </Button>
