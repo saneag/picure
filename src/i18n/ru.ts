@@ -140,6 +140,7 @@ export const ru: Translation = {
     grant: 'Разрешить камеру',
     take: 'Сделать фото',
     grid: 'Сетка',
+    exposure: 'Яркость',
     male: 'Мужчина',
     female: 'Женщина',
     front: 'Спереди',
