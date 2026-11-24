@@ -21,37 +21,45 @@ export function PatientForm({ value, onChange }: PatientFormProps) {
 
   return (
     <>
-      <Section title={t('patient.section')} footer={t('patient.optional')}>
-        <View className="flex-row items-center px-4">
-          <Input
-            value={value.name}
-            onChangeText={(v) => set('name', v)}
-            placeholder={t('patient.name')}
-            autoCapitalize="words"
-          />
+      <View className="mb-6">
+        <Text variant="caption" className="mb-1.5 px-4">
+          {t('patient.section')}
+        </Text>
+        <View className="gap-3">
+          <View className="flex-row items-center rounded-ios-lg bg-card px-4">
+            <Input
+              value={value.name}
+              onChangeText={(v) => set('name', v)}
+              placeholder={t('patient.name')}
+              autoCapitalize="words"
+            />
+          </View>
+          <View className="flex-row items-center rounded-ios-lg bg-card px-4">
+            <Input
+              value={value.email}
+              onChangeText={(v) => set('email', v)}
+              placeholder={t('patient.email')}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          <View className="flex-row items-center rounded-ios-lg bg-card px-4">
+            <Input
+              value={value.phone}
+              onChangeText={(v) => set('phone', v)}
+              placeholder={t('patient.phone')}
+              keyboardType="phone-pad"
+            />
+          </View>
         </View>
-        <View className="flex-row items-center px-4">
-          <Input
-            value={value.email}
-            onChangeText={(v) => set('email', v)}
-            placeholder={t('patient.email')}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-        <View className="flex-row items-center px-4">
-          <Input
-            value={value.phone}
-            onChangeText={(v) => set('phone', v)}
-            placeholder={t('patient.phone')}
-            keyboardType="phone-pad"
-          />
-        </View>
-      </Section>
+        <Text variant="footnote" className="mt-1.5 px-4">
+          {t('patient.optional')}
+        </Text>
+      </View>
 
       <Section>
-        <View className="px-4 py-1">
+        <View className="px-4 py-2">
           <Input
             value={value.description}
             onChangeText={(v) => set('description', v)}
