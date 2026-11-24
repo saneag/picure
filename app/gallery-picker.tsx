@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
 import { Button } from '@/components/ui/button';
@@ -35,12 +35,22 @@ export default function GalleryPickerScreen() {
     targetSlot !== undefined ? 1 : Math.max(1, emptySlots + (4 - (draft?.slots.length ?? 4)));
   const size = width / COLUMNS;
 
+  const loading = useRef(false);
+
   const loadMore = useCallback(async () => {
-    if (!hasMore) return;
-    const page = await loadGalleryPage(cursor);
-    setPhotos((current) => [...current, ...page.photos]);
-    setCursor(page.endCursor);
-    setHasMore(page.hasNextPage);
+    if (!hasMore || loading.current) return;
+    loading.current = true;
+    try {
+      const page = await loadGalleryPage(cursor);
+      setPhotos((current) => {
+        const known = new Set(current.map((p) => p.id));
+        return [...current, ...page.photos.filter((p) => !known.has(p.id))];
+      });
+      setCursor(page.endCursor);
+      setHasMore(page.hasNextPage);
+    } finally {
+      loading.current = false;
+    }
   }, [cursor, hasMore]);
 
   useEffect(() => {

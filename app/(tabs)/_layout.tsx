@@ -1,14 +1,25 @@
 import { BlurView } from 'expo-blur';
-import { Tabs } from 'expo-router';
-import { Images, Settings } from 'lucide-react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { Camera, Images, PlusCircle, Settings } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet } from 'react-native';
 import { useColorScheme } from 'nativewind';
+import { useDraft } from '@/features/collage/draft-context';
 
 export default function TabsLayout() {
   const { t } = useTranslation();
   const { colorScheme } = useColorScheme();
+  const router = useRouter();
+  const { startNew } = useDraft();
 
+  const createNew = () => {
+    startNew();
+    router.push('/collage/editor');
+  };
+  const takePhoto = () => {
+    startNew();
+    router.push({ pathname: '/camera', params: { from: 'home' } });
+  };
   return (
     <Tabs
       screenOptions={{
@@ -39,6 +50,32 @@ export default function TabsLayout() {
         options={{
           title: t('tabs.collages'),
           tabBarIcon: ({ color, size }) => <Images color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="action-camera"
+        options={{
+          title: t('home.camera'),
+          tabBarIcon: ({ color, size }) => <Camera color={color} size={size} />,
+        }}
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            takePhoto();
+          },
+        }}
+      />
+      <Tabs.Screen
+        name="action-new"
+        options={{
+          title: t('home.newCollage'),
+          tabBarIcon: ({ color, size }) => <PlusCircle color={color} size={size} />,
+        }}
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            createNew();
+          },
         }}
       />
       <Tabs.Screen

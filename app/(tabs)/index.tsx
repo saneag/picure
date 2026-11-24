@@ -1,23 +1,20 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Camera, Plus, Search } from 'lucide-react-native';
+import { Search } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Image, Pressable, View } from 'react-native';
-import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Text } from '@/components/ui/text';
 import { listCollages } from '@/db/collages-repo';
-import { useDraft } from '@/features/collage/draft-context';
 import type { SavedCollage } from '@/features/collage/types';
 
 export default function CollagesScreen() {
   const { t, i18n } = useTranslation();
   const db = useSQLiteContext();
   const router = useRouter();
-  const { startNew } = useDraft();
   const [search, setSearch] = useState('');
   const [collages, setCollages] = useState<SavedCollage[]>([]);
 
@@ -27,41 +24,9 @@ export default function CollagesScreen() {
     }, [db, search]),
   );
 
-  const createNew = () => {
-    startNew();
-    router.push('/collage/editor');
-  };
-  const takePhoto = () => {
-    startNew();
-    router.push({ pathname: '/camera', params: { from: 'home' } });
-  };
-
   return (
     <View className="flex-1 bg-grouped">
-      <ScreenHeader
-        large
-        title={t('home.title')}
-        right={
-          <>
-            <Button
-              variant="tinted"
-              size="icon"
-              accessibilityLabel={t('home.camera')}
-              onPress={takePhoto}
-            >
-              <Icon as={Camera} size={20} />
-            </Button>
-            <Button
-              variant="tinted"
-              size="icon"
-              accessibilityLabel={t('home.newCollage')}
-              onPress={createNew}
-            >
-              <Icon as={Plus} size={22} />
-            </Button>
-          </>
-        }
-      />
+      <ScreenHeader large title={t('home.title')} />
       <FlatList
         data={collages}
         keyExtractor={(item) => item.id}
