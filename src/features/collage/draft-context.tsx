@@ -49,6 +49,7 @@ function blankDraft(): CollageDraft {
     patient: { ...EMPTY_PATIENT },
     layoutId: getDefaultLayoutId(DEFAULT_SLOT_COUNT),
     ratios: getLayout(getDefaultLayoutId(DEFAULT_SLOT_COUNT), DEFAULT_SLOT_COUNT).ratios,
+    showMargins: false,
     slots: Array.from({ length: DEFAULT_SLOT_COUNT }, () => null),
   };
 }
@@ -87,6 +88,7 @@ interface DraftContextValue {
   markSaved: () => void;
   setSlotCount: (count: SlotCount) => void;
   setLayout: (layoutId: string) => void;
+  setShowMargins: (show: boolean) => void;
   setPatient: (patient: PatientInfo) => void;
   /**
    * With `slot`: puts the first image into that slot (replacing it).
@@ -177,6 +179,7 @@ export function DraftProvider({ children }: { children: ReactNode }) {
             getLayout(saved.layoutId, saved.slots.length as SlotCount),
             saved.ratios,
           ),
+          showMargins: saved.showMargins,
           slots: saved.slots,
         }),
       clear: () => setState(EMPTY_HISTORY),
@@ -200,6 +203,7 @@ export function DraftProvider({ children }: { children: ReactNode }) {
             i === index ? Math.min(MAX_RATIO, Math.max(MIN_RATIO, ratio)) : r,
           ),
         })),
+      setShowMargins: (showMargins) => update((current) => ({ ...current, showMargins })),
       setPatient: (patient) => update((current) => ({ ...current, patient }), 'patient'),
 
       placeImages: (images, slot) => {

@@ -8,6 +8,7 @@ import { CollageCell } from './CollageCell';
 import {
   CANVAS_ASPECT,
   computeCells,
+  MARGIN_FRACTION,
   computeLayout,
   getLayout,
   MAX_RATIO,
@@ -22,6 +23,7 @@ interface CollageCanvasProps {
   layoutId: string;
   slots: (CollageImage | null)[];
   ratios?: number[];
+  showMargins?: boolean;
   width: number;
   interactive?: boolean;
   selectedSlot?: number | null;
@@ -46,6 +48,7 @@ function CanvasBody({
   layoutId,
   slots,
   ratios,
+  showMargins = false,
   width,
   interactive = false,
   selectedSlot = null,
@@ -58,7 +61,8 @@ function CanvasBody({
   const height = width / CANVAS_ASPECT;
   const layout = getLayout(layoutId, slots.length as SlotCount);
   const resolved = resolveRatios(layout, ratios);
-  const cells = computeCells(layout, width, height, 0, resolved);
+  const gap = showMargins ? width * MARGIN_FRACTION : 0;
+  const cells = computeCells(layout, width, height, gap, resolved);
   const { splits } = computeLayout(layout.tree, resolved);
 
   // Dragging a divider only changes this shared value (UI thread); the draft is saved once on release.
@@ -79,6 +83,7 @@ function CanvasBody({
           canvasHeight={height}
           image={slots[index] ?? null}
           canvasWidth={width}
+          gap={gap}
           interactive={interactive}
           selected={interactive && selectedSlot === index}
           addLabel={addLabel}

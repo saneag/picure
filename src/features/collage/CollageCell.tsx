@@ -11,7 +11,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { clampPan, clampScale, coverSize } from './geometry';
-import { computeLayout, type Node, type Rect } from './layouts';
+import { computeLayout, insetCell, type Node, type Rect } from './layouts';
 import type { CollageImage, ImageLabel, LabelPosition, LabelSize } from './types';
 
 const LABEL_FONT_RATIO: Record<LabelSize, number> = { sm: 0.035, md: 0.05, lg: 0.07 };
@@ -36,6 +36,8 @@ interface CollageCellProps {
   image: CollageImage | null;
   /** Width of the whole collage in px; label size scales with it so exports match the preview. */
   canvasWidth: number;
+  /** Space between images in px (0 = none). */
+  gap: number;
   interactive: boolean;
   selected?: boolean;
   addLabel?: string;
@@ -52,6 +54,7 @@ export function CollageCell({
   canvasHeight,
   image,
   canvasWidth,
+  gap,
   interactive,
   selected,
   addLabel,
@@ -61,13 +64,13 @@ export function CollageCell({
 }: CollageCellProps) {
   const staticFrame = { left: rect.x, top: rect.y, width: rect.width, height: rect.height };
   const frame = useAnimatedStyle(() => {
-    const r = computeLayout(tree, ratios.value).cells[index];
-    return {
-      left: r.x * canvasWidth,
-      top: r.y * canvasHeight,
-      width: r.width * canvasWidth,
-      height: r.height * canvasHeight,
-    };
+    const r = insetCell(
+      computeLayout(tree, ratios.value).cells[index],
+      canvasWidth,
+      canvasHeight,
+      gap,
+    );
+    return { left: r.x, top: r.y, width: r.width, height: r.height };
   });
   const frameStyle = [
     { position: 'absolute' as const, overflow: 'hidden' as const },
@@ -106,6 +109,7 @@ export function CollageCell({
       index={index}
       canvasWidth={canvasWidth}
       canvasHeight={canvasHeight}
+      gap={gap}
       rect={rect}
       image={image}
       interactive={interactive}
@@ -135,6 +139,7 @@ function PhotoCell({
   canvasHeight,
   image,
   canvasWidth,
+  gap,
   interactive,
   selected,
   missingLabel,
@@ -163,9 +168,14 @@ function PhotoCell({
 
   const metrics = () => {
     'worklet';
-    const r = computeLayout(tree, ratios.value).cells[index];
-    const w = r.width * canvasWidth;
-    const h = r.height * canvasHeight;
+    const r = insetCell(
+      computeLayout(tree, ratios.value).cells[index],
+      canvasWidth,
+      canvasHeight,
+      gap,
+    );
+    const w = r.width;
+    const h = r.height;
     const cover = coverSize({ width: imageWidth, height: imageHeight }, { width: w, height: h });
     return { w, h, cover };
   };
@@ -211,7 +221,7 @@ function PhotoCell({
 
   // The image view keeps the size it had when first shown and follows the cell via transforms.
   // The anchor only changes with the photo or canvas size, so releasing a divider causes no jump.
-  const anchorKey = `${image.uri}|${canvasWidth}|${canvasHeight}`;
+  const anchorKey = `${image.uri}|${canvasWidth}|${canvasHeight}|${gap}`;
   const anchorRef = useRef<{ key: string; rect: Rect } | null>(null);
   if (anchorRef.current?.key !== anchorKey) anchorRef.current = { key: anchorKey, rect };
   const anchor = anchorRef.current.rect;

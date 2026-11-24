@@ -46,6 +46,7 @@ export const en = {
     editTitle: 'Edit collage',
     tabCollage: 'Collage',
     tabDetails: 'Details',
+    showMargins: 'Show margins between images',
     images: 'Images',
     layout: 'Layout',
     addPhoto: 'Add photo',

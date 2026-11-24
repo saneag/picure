@@ -44,6 +44,7 @@ const MIGRATIONS: string[] = [
   `,
   `ALTER TABLE collages ADD COLUMN is_draft INTEGER NOT NULL DEFAULT 0;`,
   `ALTER TABLE collages ADD COLUMN ratios TEXT NOT NULL DEFAULT '[]';`,
+  `ALTER TABLE collages ADD COLUMN show_margins INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {

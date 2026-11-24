@@ -10,6 +10,7 @@ interface CollageRow {
   procedure_count: number;
   layout_id: string;
   ratios: string;
+  show_margins: number;
   slot_count: number;
   rendered_uri: string;
   is_draft: number;
@@ -78,6 +79,7 @@ function toCollage(row: CollageRow, images: ImageRow[]): SavedCollage {
     },
     layoutId: row.layout_id,
     ratios: parseRatios(row.ratios),
+    showMargins: row.show_margins === 1,
     slots,
     isDraft: row.is_draft === 1,
     renderedUri: row.rendered_uri,
@@ -116,9 +118,9 @@ export async function saveCollage(db: SQLiteDatabase, collage: SavedCollage): Pr
   await db.withTransactionAsync(async () => {
     await db.runAsync(
       `INSERT OR REPLACE INTO collages
-        (id, patient_name, email, phone, description, procedure_count, layout_id, ratios, slot_count,
-         rendered_uri, is_draft, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, patient_name, email, phone, description, procedure_count, layout_id, ratios, show_margins,
+         slot_count, rendered_uri, is_draft, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       collage.id,
       collage.patient.name,
       collage.patient.email,
@@ -127,6 +129,7 @@ export async function saveCollage(db: SQLiteDatabase, collage: SavedCollage): Pr
       collage.patient.procedureCount,
       collage.layoutId,
       JSON.stringify(collage.ratios),
+      collage.showMargins ? 1 : 0,
       collage.slots.length,
       collage.renderedUri,
       collage.isDraft ? 1 : 0,

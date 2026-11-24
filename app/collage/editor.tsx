@@ -23,6 +23,7 @@ import { Icon } from '@/components/ui/icon';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
+import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { CollageCanvas } from '@/features/collage/CollageCanvas';
 import { useDraft } from '@/features/collage/draft-context';
@@ -33,10 +34,10 @@ import {
   CANVAS_ASPECT,
   EXPORT_HEIGHT,
   EXPORT_WIDTH,
-  computeLayout,
+  MARGIN_FRACTION,
+  computeCells,
   getLayout,
   getLayoutsForCount,
-  resolveRatios,
 } from '@/features/collage/layouts';
 import { SaveSheet, type SaveOptions } from '@/features/collage/SaveSheet';
 import type { SlotCount } from '@/features/collage/types';
@@ -115,8 +116,14 @@ export default function EditorScreen() {
   const image = draft.slots[slot];
   const hasAnyImage = draft.slots.some((s) => s !== null);
   const layoutDef = getLayout(draft.layoutId, count);
-  const cell = computeLayout(layoutDef.tree, resolveRatios(layoutDef, draft.ratios)).cells[slot];
-  const cellAspect = cell ? (cell.width / cell.height) * CANVAS_ASPECT : CANVAS_ASPECT;
+  const cell = computeCells(
+    layoutDef,
+    1,
+    1 / CANVAS_ASPECT,
+    draft.showMargins ? MARGIN_FRACTION : 0,
+    draft.ratios,
+  )[slot];
+  const cellAspect = cell ? cell.width / cell.height : CANVAS_ASPECT;
   const canvasWidth = Math.max(0, Math.min(area.width, area.height * CANVAS_ASPECT));
 
   const changeCount = (next: SlotCount) => {
@@ -272,6 +279,7 @@ export default function EditorScreen() {
                 layoutId={draft.layoutId}
                 slots={draft.slots}
                 ratios={draft.ratios}
+                showMargins={draft.showMargins}
                 width={canvasWidth}
                 interactive
                 selectedSlot={slot}
@@ -321,7 +329,6 @@ export default function EditorScreen() {
       </BottomSheet>
       <BottomSheet
         visible={detailsOpen}
-        title={t('editor.tabDetails')}
         closeLabel={t('common.done')}
         onClose={() => setDetailsOpen(false)}
       >
@@ -334,6 +341,14 @@ export default function EditorScreen() {
             options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
           />
         </View>
+        <View className="mb-4 flex-row items-center justify-between gap-4">
+          <Text variant="subhead">{t('editor.showMargins')}</Text>
+          <Switch
+            value={draft.showMargins}
+            onValueChange={api.setShowMargins}
+            accessibilityLabel={t('editor.showMargins')}
+          />
+        </View>
         <PatientForm value={draft.patient} onChange={api.setPatient} />
       </BottomSheet>
 
@@ -344,6 +359,7 @@ export default function EditorScreen() {
             layoutId={draft.layoutId}
             slots={draft.slots}
             ratios={draft.ratios}
+            showMargins={draft.showMargins}
             width={EXPORT_LAYOUT_WIDTH}
           />
         </View>

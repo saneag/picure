@@ -14,7 +14,7 @@ import { Text } from './text';
 
 interface BottomSheetProps {
   visible: boolean;
-  title: string;
+  title?: string;
   onClose: () => void;
   closeLabel: string;
   children: ReactNode;
@@ -78,7 +78,7 @@ export function BottomSheet({ visible, title, onClose, closeLabel, children }: B
               <View className="h-1 w-9 rounded-full bg-separator" />
             </View>
             <View className="flex-row items-center justify-between px-4 pb-2 pt-3">
-              <Text variant="headline">{title}</Text>
+              {title ? <Text variant="headline">{title}</Text> : <View />}
               <Button variant="plain" size="compact" label={closeLabel} onPress={onClose} />
             </View>
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-4 pt-2">

@@ -48,6 +48,7 @@ export const ru: Translation = {
     editTitle: 'Редактирование',
     tabCollage: 'Коллаж',
     tabDetails: 'Данные',
+    showMargins: 'Отступы между фото',
     images: 'Фото',
     layout: 'Макет',
     addPhoto: 'Добавить фото',

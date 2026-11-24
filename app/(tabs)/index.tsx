@@ -99,6 +99,7 @@ export default function CollagesScreen() {
                 <CollageCanvas
                   layoutId={item.layoutId}
                   ratios={item.ratios}
+                  showMargins={item.showMargins}
                   slots={item.slots}
                   width={cardWidth}
                 />

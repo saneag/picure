@@ -111,6 +111,25 @@ export function resolveRatios(layout: LayoutDef, ratios?: number[] | null): numb
 
 const EDGE = 1e-6;
 
+/** Space between images when margins are on, as a fraction of the collage width. */
+export const MARGIN_FRACTION = 0.012;
+
+/** Shrinks a cell by half the gap on each side that touches another cell (not the canvas edge). */
+export function insetCell(cell: Rect, width: number, height: number, gap: number): Rect {
+  'worklet';
+  const half = gap / 2;
+  const left = cell.x < EDGE ? 0 : half;
+  const top = cell.y < EDGE ? 0 : half;
+  const right = cell.x + cell.width >= 1 - EDGE ? 0 : half;
+  const bottom = cell.y + cell.height >= 1 - EDGE ? 0 : half;
+  return {
+    x: cell.x * width + left,
+    y: cell.y * height + top,
+    width: cell.width * width - left - right,
+    height: cell.height * height - top - bottom,
+  };
+}
+
 /**
  * Converts layout fractions to pixels. Cells are separated by `gap` pixels,
  * but there is no margin around the outside of the collage.
@@ -122,18 +141,6 @@ export function computeCells(
   gap: number,
   ratios?: number[] | null,
 ): Rect[] {
-  const half = gap / 2;
   const { cells } = computeLayout(layout.tree, resolveRatios(layout, ratios));
-  return cells.map((cell) => {
-    const left = cell.x < EDGE ? 0 : half;
-    const top = cell.y < EDGE ? 0 : half;
-    const right = cell.x + cell.width >= 1 - EDGE ? 0 : half;
-    const bottom = cell.y + cell.height >= 1 - EDGE ? 0 : half;
-    return {
-      x: cell.x * width + left,
-      y: cell.y * height + top,
-      width: cell.width * width - left - right,
-      height: cell.height * height - top - bottom,
-    };
-  });
+  return cells.map((cell) => insetCell(cell, width, height, gap));
 }
