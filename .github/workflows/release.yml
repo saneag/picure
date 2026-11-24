@@ -35,6 +35,18 @@ jobs:
       - name: Normalize version
         run: echo "TAG=v${VERSION#v}" >> "$GITHUB_ENV"
 
+      - name: Stamp release version into the app
+        run: |
+          node -e '
+            const fs = require("fs");
+            const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+            app.expo.version = process.env.TAG.slice(1);
+            app.expo.android = { ...app.expo.android, versionCode: Number(process.env.RUN_NUMBER) };
+            fs.writeFileSync("app.json", JSON.stringify(app, null, 2));
+          '
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx jest --runInBand
