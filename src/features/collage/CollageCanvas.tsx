@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { CollageCell } from './CollageCell';
@@ -47,8 +47,11 @@ export function CollageCanvas({
 }: CollageCanvasProps) {
   const height = width / CANVAS_ASPECT;
   const layout = getLayout(layoutId, slots.length as SlotCount);
-  const cells = computeCells(layout, width, height, width * 0.008, ratios);
-  const { splits } = computeLayout(layout.tree, resolveRatios(layout, ratios));
+  // While dragging, only this canvas re-renders; the draft is updated once when the drag ends.
+  const [live, setLive] = useState<number[] | null>(null);
+  const activeRatios = live ?? resolveRatios(layout, ratios);
+  const cells = computeCells(layout, width, height, width * 0.008, activeRatios);
+  const { splits } = computeLayout(layout.tree, activeRatios);
 
   return (
     <View style={{ width, height }} className="overflow-hidden bg-white" collapsable={false}>
@@ -73,7 +76,11 @@ export function CollageCanvas({
               split={split}
               width={width}
               height={height}
-              onChange={(ratio) => onRatioChange(index, ratio)}
+              onChange={(ratio) => setLive(activeRatios.map((r, i) => (i === index ? ratio : r)))}
+              onEnd={(ratio) => {
+                onRatioChange(index, ratio);
+                setLive(null);
+              }}
             />
           ))
         : null}
@@ -89,25 +96,30 @@ function SplitHandle({
   width,
   height,
   onChange,
+  onEnd,
 }: {
   split: Split;
   width: number;
   height: number;
   onChange: (ratio: number) => void;
+  onEnd: (ratio: number) => void;
 }) {
   const startRatio = useRef(split.ratio);
   const horizontal = split.dir === 'row';
   const areaSize = (horizontal ? split.rect.width * width : split.rect.height * height) || 1;
+
+  const ratioAt = (e: { translationX: number; translationY: number }) => {
+    const delta = (horizontal ? e.translationX : e.translationY) / areaSize;
+    return Math.min(MAX_RATIO, Math.max(MIN_RATIO, startRatio.current + delta));
+  };
 
   const pan = Gesture.Pan()
     .runOnJS(true)
     .onStart(() => {
       startRatio.current = split.ratio;
     })
-    .onUpdate((e) => {
-      const delta = (horizontal ? e.translationX : e.translationY) / areaSize;
-      onChange(Math.min(MAX_RATIO, Math.max(MIN_RATIO, startRatio.current + delta)));
-    });
+    .onUpdate((e) => onChange(ratioAt(e)))
+    .onEnd((e) => onEnd(ratioAt(e)));
 
   const position = horizontal
     ? {

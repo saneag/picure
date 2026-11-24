@@ -55,9 +55,9 @@ describe('resizable cells', () => {
     expect(resolveRatios(layout, [0.3, 0.4, 0.5])).toEqual([0.3, 0.4, 0.5]);
   });
 
-  it('offers four images in one column', () => {
+  it('offers four tall images side by side', () => {
     const cells = getLayout('quad-column', 4).cells;
-    expect(cells.every((c) => c.width === 1 && Math.abs(c.height - 0.25) < 1e-9)).toBe(true);
+    expect(cells.every((c) => c.height === 1 && Math.abs(c.width - 0.25) < 1e-9)).toBe(true);
   });
 });
 

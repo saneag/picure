@@ -84,7 +84,7 @@ export const LAYOUTS: LayoutDef[] = [
   def('quad-grid', 4, col(row(0, 1), row(2, 3)), [0.5, 0.5, 0.5]),
   def('quad-top', 4, col(0, row(1, row(2, 3))), [0.5, 1 / 3, 1 / 2]),
   def('quad-left', 4, row(0, col(1, col(2, 3))), [0.5, 1 / 3, 1 / 2]),
-  def('quad-column', 4, col(0, col(1, col(2, 3))), [1 / 4, 1 / 3, 1 / 2]),
+  def('quad-column', 4, row(0, row(1, row(2, 3))), [1 / 4, 1 / 3, 1 / 2]),
 ];
 
 export function getLayoutsForCount(count: SlotCount): LayoutDef[] {
