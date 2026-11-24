@@ -18,7 +18,7 @@ export interface ExposureRange {
 interface NativeModule {
   getBackCameraInfo(): BackCameraInfo | null;
   getExposureRange(viewTag: number): ExposureRange | null;
-  setExposure(viewTag: number, index: number): number | boolean;
+  setExposure(viewTag: number, index: number): boolean;
 }
 
 const native = requireOptionalNativeModule<NativeModule>('PicureCameraInfo');
@@ -41,12 +41,11 @@ export function getExposureRange(viewTag: number): ExposureRange | null {
   }
 }
 
-/** Returns the index the camera applied, or null when the camera isn't ready yet. */
-export function setExposure(viewTag: number, index: number): number | null {
+/** Returns false when the camera isn't ready yet. */
+export function setExposure(viewTag: number, index: number): boolean {
   try {
-    const result = native?.setExposure(viewTag, index);
-    return typeof result === 'number' ? result : null;
+    return native?.setExposure(viewTag, index) ?? false;
   } catch {
-    return null;
+    return false;
   }
 }

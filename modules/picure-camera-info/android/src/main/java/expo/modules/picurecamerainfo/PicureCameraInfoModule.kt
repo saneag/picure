@@ -36,22 +36,15 @@ class PicureCameraInfoModule : Module() {
         "min" to range.lower,
         "max" to range.upper,
         "step" to step.toDouble(),
-        "index" to (call(state, "getExposureCompensationIndex") as Int),
         "supported" to (call(state, "isExposureCompensationSupported") as Boolean),
       )
     }
 
     Function("setExposure") { viewTag: Int, index: Int ->
       val control = cameraCall(viewTag, "getCameraControl") ?: return@Function false
-      val future = control.javaClass.getMethod("setExposureCompensationIndex", Int::class.java)
+      control.javaClass.getMethod("setExposureCompensationIndex", Int::class.java)
         .invoke(control, index)
-      // The result is the index the camera really applied (it may clamp).
-      try {
-        future?.javaClass?.getMethod("get", Long::class.java, java.util.concurrent.TimeUnit::class.java)
-          ?.invoke(future, 500L, java.util.concurrent.TimeUnit.MILLISECONDS) as? Int ?: -999
-      } catch (e: Exception) {
-        -998
-      }
+      true
     }
   }
 
