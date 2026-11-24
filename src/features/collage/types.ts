@@ -43,6 +43,8 @@ export type SlotCount = 1 | 2 | 3 | 4;
 /** A collage being edited. `id` is null until it is saved for the first time. */
 export interface CollageDraft {
   id: string | null;
+  /** True when this was loaded from a saved draft that has not been finished yet. */
+  isDraft: boolean;
   patient: PatientInfo;
   layoutId: string;
   /** One entry per slot; null means the slot is still empty. */
@@ -54,7 +56,9 @@ export interface SavedCollage {
   patient: PatientInfo;
   layoutId: string;
   slots: (CollageImage | null)[];
-  /** Rendered collage image in private app storage. */
+  /** Unfinished collage saved from the editor; it has no rendered image yet. */
+  isDraft: boolean;
+  /** Rendered collage image in private app storage ('' for drafts). */
   renderedUri: string;
   createdAt: number;
   updatedAt: number;

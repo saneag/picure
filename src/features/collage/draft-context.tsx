@@ -35,6 +35,7 @@ const DEFAULT_SLOT_COUNT: SlotCount = 2;
 function blankDraft(): CollageDraft {
   return {
     id: null,
+    isDraft: false,
     patient: { ...EMPTY_PATIENT },
     layoutId: getDefaultLayoutId(DEFAULT_SLOT_COUNT),
     slots: Array.from({ length: DEFAULT_SLOT_COUNT }, () => null),
@@ -97,6 +98,7 @@ export function DraftProvider({ children }: { children: ReactNode }) {
       startFrom: (saved) =>
         begin({
           id: saved.id,
+          isDraft: saved.isDraft,
           patient: saved.patient,
           layoutId: saved.layoutId,
           slots: saved.slots,

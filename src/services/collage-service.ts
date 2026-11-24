@@ -27,6 +27,7 @@ export async function saveDraft(
     patient: draft.patient,
     layoutId: draft.layoutId,
     slots: draft.slots,
+    isDraft: false,
     renderedUri,
     createdAt: previous?.createdAt ?? now,
     updatedAt: now,
@@ -34,17 +35,33 @@ export async function saveDraft(
   await saveCollage(db, saved);
 
   if (previous) {
-    await deleteStoredFile(previous.renderedUri);
+    if (previous.renderedUri) await deleteStoredFile(previous.renderedUri);
     await deleteUnusedCameraPhotos(db, previous, saved);
   }
   return saved;
+}
+
+/** Stores the editor state as an unfinished draft (no rendered image, photos may be missing). */
+export async function saveAsDraft(db: SQLiteDatabase, draft: CollageDraft): Promise<void> {
+  const previous = draft.id ? await getCollage(db, draft.id) : null;
+  const now = Date.now();
+  await saveCollage(db, {
+    id: previous?.id ?? newId(),
+    patient: draft.patient,
+    layoutId: draft.layoutId,
+    slots: draft.slots,
+    isDraft: true,
+    renderedUri: '',
+    createdAt: previous?.createdAt ?? now,
+    updatedAt: now,
+  });
 }
 
 export async function removeCollage(db: SQLiteDatabase, id: string): Promise<void> {
   const collage = await getCollage(db, id);
   if (!collage) return;
   await deleteCollage(db, id);
-  await deleteStoredFile(collage.renderedUri);
+  if (collage.renderedUri) await deleteStoredFile(collage.renderedUri);
   await deleteUnusedCameraPhotos(db, collage, null);
 }
 

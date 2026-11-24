@@ -20,7 +20,7 @@ import { CANVAS_ASPECT, EXPORT_HEIGHT, EXPORT_WIDTH } from '@/features/collage/l
 import { SaveSheet, type SaveOptions } from '@/features/collage/SaveSheet';
 import type { SlotCount } from '@/features/collage/types';
 import { PatientForm } from '@/features/patients/PatientForm';
-import { saveDraft } from '@/services/collage-service';
+import { saveAsDraft, saveDraft } from '@/services/collage-service';
 import { saveToGalleryAlbum } from '@/services/gallery';
 
 type Tab = 'collage' | 'details';
@@ -57,20 +57,32 @@ export default function EditorScreen() {
   }, [draft, router]);
 
   usePreventRemove(api.isDirty && !leaving.current && !busy, ({ data }) => {
+    const leave = () => {
+      leaving.current = true;
+      api.clear();
+      navigation.dispatch(data.action);
+    };
     setDialog({
       title: t('editor.discardTitle'),
       message: t('editor.discardMessage'),
       actions: [
         { label: t('editor.keepEditing'), emphasized: true },
         {
-          label: t('editor.discard'),
-          destructive: true,
-          onPress: () => {
-            leaving.current = true;
-            api.clear();
-            navigation.dispatch(data.action);
+          label: t('editor.saveDraft'),
+          onPress: async () => {
+            if (!draft) return;
+            try {
+              await saveAsDraft(db, draft);
+              leave();
+            } catch {
+              setDialog({
+                title: t('save.failed'),
+                actions: [{ label: t('common.ok'), emphasized: true }],
+              });
+            }
           },
         },
+        { label: t('editor.discard'), destructive: true, onPress: leave },
       ],
     });
   });
@@ -102,8 +114,10 @@ export default function EditorScreen() {
     router.push({ pathname: '/gallery-picker', params: image ? { slot: String(slot) } : {} });
   const openCamera = () => router.push({ pathname: '/camera', params: { slot: String(slot) } });
 
+  const isSavedCollage = !!draft.id && !draft.isDraft;
+
   const requestSave = (options: SaveOptions) => {
-    const overriding = !!draft.id && options.inApp && options.mode === 'override';
+    const overriding = isSavedCollage && options.inApp && options.mode === 'override';
     if (!overriding) return runSave(options);
     setSaveOpen(false);
     setDialog({
@@ -134,7 +148,8 @@ export default function EditorScreen() {
       });
       let finalUri = tempUri;
       if (options.inApp) {
-        const saved = await saveDraft(db, draft, tempUri, draft.id ? options.mode : 'new');
+        const mode = !draft.id ? 'new' : draft.isDraft ? 'override' : options.mode;
+        const saved = await saveDraft(db, draft, tempUri, mode);
         finalUri = saved.renderedUri;
       }
       if (options.toGallery) await saveToGalleryAlbum(finalUri);
@@ -165,7 +180,7 @@ export default function EditorScreen() {
   return (
     <View className="flex-1 bg-grouped">
       <ScreenHeader
-        title={draft.id ? t('editor.editTitle') : t('editor.newTitle')}
+        title={isSavedCollage ? t('editor.editTitle') : t('editor.newTitle')}
         backLabel={t('common.back')}
         right={
           <Button
@@ -282,7 +297,7 @@ export default function EditorScreen() {
       />
       <SaveSheet
         visible={saveOpen}
-        isExisting={!!draft.id}
+        isExisting={isSavedCollage}
         busy={busy}
         onClose={() => setSaveOpen(false)}
         onSave={requestSave}

@@ -22,6 +22,9 @@ export const ru: Translation = {
     newCollage: 'Новый коллаж',
     camera: 'Сделать фото',
     procedures: 'Процедур: {{count}}',
+    draft: 'Черновик',
+    deleteDraftTitle: 'Удалить черновик?',
+    deleteDraftMessage: 'Незавершённый коллаж будет удалён из Picure.',
   },
   detail: {
     title: 'Коллаж',
@@ -61,6 +64,7 @@ export const ru: Translation = {
     reduceConfirm: 'Уменьшить',
     discardTitle: 'Отменить изменения?',
     discardMessage: 'Изменения в этом коллаже не сохранены.',
+    saveDraft: 'Сохранить черновик',
     discard: 'Отменить',
     keepEditing: 'Продолжить',
     missingImage: 'Фото недоступно',

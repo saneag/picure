@@ -20,6 +20,9 @@ export const en = {
     newCollage: 'New collage',
     camera: 'Take photo',
     procedures: 'Procedures: {{count}}',
+    draft: 'Draft',
+    deleteDraftTitle: 'Delete this draft?',
+    deleteDraftMessage: 'The unfinished collage will be removed from Picure.',
   },
   detail: {
     title: 'Collage',
@@ -59,6 +62,7 @@ export const en = {
     reduceConfirm: 'Reduce',
     discardTitle: 'Discard changes?',
     discardMessage: 'Your changes to this collage have not been saved.',
+    saveDraft: 'Save draft',
     discard: 'Discard',
     keepEditing: 'Keep editing',
     missingImage: 'Photo unavailable',

@@ -42,6 +42,7 @@ const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  `ALTER TABLE collages ADD COLUMN is_draft INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {

@@ -3,25 +3,41 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Search } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Image, Pressable, View } from 'react-native';
+import { FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Text } from '@/components/ui/text';
 import { listCollages } from '@/db/collages-repo';
+import { CollageCanvas } from '@/features/collage/CollageCanvas';
+import { useDraft } from '@/features/collage/draft-context';
 import type { SavedCollage } from '@/features/collage/types';
+import { removeCollage } from '@/services/collage-service';
 
 export default function CollagesScreen() {
   const { t, i18n } = useTranslation();
   const db = useSQLiteContext();
   const router = useRouter();
+  const { startFrom } = useDraft();
+  const { width } = useWindowDimensions();
   const [search, setSearch] = useState('');
   const [collages, setCollages] = useState<SavedCollage[]>([]);
+  const [draftToDelete, setDraftToDelete] = useState<SavedCollage | null>(null);
+  const cardWidth = (width - 32 - 12) / 2;
+
+  const reload = useCallback(() => listCollages(db, search).then(setCollages), [db, search]);
+
+  const open = (item: SavedCollage) => {
+    if (!item.isDraft) return router.push(`/collage/${item.id}`);
+    startFrom(item);
+    router.push('/collage/editor');
+  };
 
   useFocusEffect(
     useCallback(() => {
-      listCollages(db, search).then(setCollages);
-    }, [db, search]),
+      reload();
+    }, [reload]),
   );
 
   return (
@@ -58,13 +74,26 @@ export default function CollagesScreen() {
         renderItem={({ item }) => (
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push(`/collage/${item.id}`)}
-            className="flex-1 overflow-hidden rounded-ios-lg bg-card active:opacity-70"
+            onPress={() => open(item)}
+            onLongPress={item.isDraft ? () => setDraftToDelete(item) : undefined}
+            style={{ width: cardWidth }}
+            className="overflow-hidden rounded-ios-lg bg-card active:opacity-70"
           >
-            <Image
-              source={{ uri: item.renderedUri }}
-              className="aspect-[4/5] w-full bg-secondary"
-            />
+            {item.isDraft ? (
+              <View pointerEvents="none">
+                <CollageCanvas layoutId={item.layoutId} slots={item.slots} width={cardWidth} />
+                <View className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5">
+                  <Text variant="footnote" className="text-primary-foreground">
+                    {t('home.draft')}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: item.renderedUri }}
+                className="aspect-[4/5] w-full bg-secondary"
+              />
+            )}
             <View className="gap-0.5 p-3">
               <Text variant="headline" numberOfLines={1}>
                 {item.patient.name || t('common.untitled')}
@@ -78,6 +107,24 @@ export default function CollagesScreen() {
             </View>
           </Pressable>
         )}
+      />
+      <ConfirmDialog
+        open={draftToDelete !== null}
+        title={t('home.deleteDraftTitle')}
+        message={t('home.deleteDraftMessage')}
+        actions={[
+          { label: t('common.cancel') },
+          {
+            label: t('common.delete'),
+            destructive: true,
+            emphasized: true,
+            onPress: async () => {
+              if (draftToDelete) await removeCollage(db, draftToDelete.id);
+              reload();
+            },
+          },
+        ]}
+        onClose={() => setDraftToDelete(null)}
       />
     </View>
   );
