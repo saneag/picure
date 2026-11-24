@@ -9,14 +9,14 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
-import type { LanguageSetting } from '@/db/settings-repo';
+import type { LanguageSetting, ThemeSetting } from '@/db/settings-repo';
 import { useSettings } from '@/features/settings/settings-context';
 import { exportBackup } from '@/services/backup';
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const db = useSQLiteContext();
-  const { settings, setLanguage, setAppLock } = useSettings();
+  const { settings, setLanguage, setTheme, setAppLock } = useSettings();
   const [message, setMessage] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -49,6 +49,20 @@ export default function SettingsScreen() {
                 { value: 'system', label: t('settings.languageSystem') },
                 { value: 'en', label: 'English' },
                 { value: 'ru', label: 'Русский' },
+              ]}
+            />
+          </View>
+        </Section>
+
+        <Section title={t('settings.theme')}>
+          <View className="p-2">
+            <SegmentedControl<ThemeSetting>
+              value={settings.theme}
+              onChange={setTheme}
+              options={[
+                { value: 'system', label: t('settings.languageSystem') },
+                { value: 'light', label: t('settings.themeLight') },
+                { value: 'dark', label: t('settings.themeDark') },
               ]}
             />
           </View>

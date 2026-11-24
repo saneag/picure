@@ -2,12 +2,19 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 export type LanguageSetting = 'system' | 'en' | 'ru';
 
+export type ThemeSetting = 'system' | 'light' | 'dark';
+
 export interface AppSettings {
   language: LanguageSetting;
+  theme: ThemeSetting;
   appLock: boolean;
 }
 
-export const DEFAULT_SETTINGS: AppSettings = { language: 'system', appLock: false };
+export const DEFAULT_SETTINGS: AppSettings = {
+  language: 'system',
+  theme: 'system',
+  appLock: false,
+};
 
 export async function readSettings(db: SQLiteDatabase): Promise<AppSettings> {
   const rows = await db.getAllAsync<{ key: string; value: string }>(
@@ -16,6 +23,7 @@ export async function readSettings(db: SQLiteDatabase): Promise<AppSettings> {
   const map = Object.fromEntries(rows.map((row) => [row.key, row.value]));
   return {
     language: (map.language as LanguageSetting) ?? DEFAULT_SETTINGS.language,
+    theme: (map.theme as ThemeSetting) ?? DEFAULT_SETTINGS.theme,
     appLock: map.appLock === 'true',
   };
 }
