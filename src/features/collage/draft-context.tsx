@@ -30,6 +30,16 @@ export interface NewImage {
 }
 
 const MAX_SLOTS = 4;
+const MAX_HISTORY = 50;
+const MERGE_MS = 1500;
+
+interface HistoryState {
+  draft: CollageDraft | null;
+  past: CollageDraft[];
+  future: CollageDraft[];
+}
+
+const EMPTY_HISTORY: HistoryState = { draft: null, past: [], future: [] };
 const DEFAULT_SLOT_COUNT: SlotCount = 2;
 
 function blankDraft(): CollageDraft {
@@ -67,6 +77,10 @@ interface DraftContextValue {
   draft: CollageDraft | null;
   /** True when the draft differs from what was last loaded or saved. */
   isDirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
   startNew: () => void;
   startFrom: (saved: SavedCollage) => void;
   clear: () => void;
@@ -96,22 +110,62 @@ const DraftContext = createContext<DraftContextValue | null>(null);
  * picker and the camera can add photos to the open collage and then go back.
  */
 export function DraftProvider({ children }: { children: ReactNode }) {
-  const [draft, setDraft] = useState<CollageDraft | null>(null);
+  const [state, setState] = useState<HistoryState>(EMPTY_HISTORY);
   const baseline = useRef('');
+  const lastEdit = useRef<{ key: string; at: number } | null>(null);
+  const draft = state.draft;
 
   const begin = useCallback((next: CollageDraft) => {
     baseline.current = JSON.stringify(next);
-    setDraft(next);
+    lastEdit.current = null;
+    setState({ draft: next, past: [], future: [] });
   }, []);
 
-  const update = useCallback((fn: (current: CollageDraft) => CollageDraft) => {
-    setDraft((current) => (current ? fn(current) : current));
+  /** Every edit goes through here. Edits with the same `mergeKey` in quick succession share one undo step. */
+  const update = useCallback((fn: (current: CollageDraft) => CollageDraft, mergeKey?: string) => {
+    const now = Date.now();
+    const merge =
+      !!mergeKey && lastEdit.current?.key === mergeKey && now - lastEdit.current.at < MERGE_MS;
+    lastEdit.current = mergeKey ? { key: mergeKey, at: now } : null;
+    setState((current) => {
+      if (!current.draft) return current;
+      const next = fn(current.draft);
+      if (next === current.draft) return current;
+      const past = merge ? current.past : [...current.past, current.draft].slice(-MAX_HISTORY);
+      return { draft: next, past, future: [] };
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    lastEdit.current = null;
+    setState((current) => {
+      const previous = current.past[current.past.length - 1];
+      if (!current.draft || !previous) return current;
+      return {
+        draft: previous,
+        past: current.past.slice(0, -1),
+        future: [current.draft, ...current.future],
+      };
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    lastEdit.current = null;
+    setState((current) => {
+      const [next, ...rest] = current.future;
+      if (!current.draft || !next) return current;
+      return { draft: next, past: [...current.past, current.draft], future: rest };
+    });
   }, []);
 
   const value = useMemo<DraftContextValue>(
     () => ({
       draft,
       isDirty: draft ? JSON.stringify(draft) !== baseline.current : false,
+      canUndo: state.past.length > 0,
+      canRedo: state.future.length > 0,
+      undo,
+      redo,
       startNew: () => begin(blankDraft()),
       startFrom: (saved) =>
         begin({
@@ -125,9 +179,11 @@ export function DraftProvider({ children }: { children: ReactNode }) {
           ),
           slots: saved.slots,
         }),
-      clear: () => setDraft(null),
+      clear: () => setState(EMPTY_HISTORY),
       markSaved: () => {
-        if (draft) baseline.current = JSON.stringify(draft);
+        if (!draft) return;
+        baseline.current = JSON.stringify(draft);
+        setState({ draft, past: [], future: [] });
       },
 
       setSlotCount: (count) =>
@@ -144,7 +200,7 @@ export function DraftProvider({ children }: { children: ReactNode }) {
             i === index ? Math.min(MAX_RATIO, Math.max(MIN_RATIO, ratio)) : r,
           ),
         })),
-      setPatient: (patient) => update((current) => ({ ...current, patient })),
+      setPatient: (patient) => update((current) => ({ ...current, patient }), 'patient'),
 
       placeImages: (images, slot) => {
         if (!draft || images.length === 0) return 0;
@@ -166,7 +222,7 @@ export function DraftProvider({ children }: { children: ReactNode }) {
           }
         }
         const layoutId = getLayout(draft.layoutId, slots.length as SlotCount).id;
-        setDraft(withLayout(draft, slots, layoutId));
+        update(() => withLayout(draft, slots, layoutId));
         return placed;
       },
 
@@ -185,14 +241,17 @@ export function DraftProvider({ children }: { children: ReactNode }) {
         })),
 
       updateLabel: (slot, label) =>
-        update((current) => ({
-          ...current,
-          slots: current.slots.map((image, i) =>
-            i === slot && image ? { ...image, label } : image,
-          ),
-        })),
+        update(
+          (current) => ({
+            ...current,
+            slots: current.slots.map((image, i) =>
+              i === slot && image ? { ...image, label } : image,
+            ),
+          }),
+          `label-${slot}`,
+        ),
     }),
-    [draft, begin, update],
+    [draft, state.past.length, state.future.length, begin, update, undo, redo],
   );
 
   return <DraftContext.Provider value={value}>{children}</DraftContext.Provider>;

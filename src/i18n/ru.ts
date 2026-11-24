@@ -59,6 +59,8 @@ export const ru: Translation = {
     expand: 'Открыть',
     adjustPhoto: 'Настроить фото',
     resetFit: 'Сбросить',
+    undo: 'Отменить',
+    redo: 'Повторить',
     removePhoto: 'Убрать',
     emptyHint: 'Добавьте хотя бы одно фото, чтобы сохранить.',
     reduceTitle: 'Убрать фото?',

@@ -1,7 +1,7 @@
 import { X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Image, Modal, View } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BackHandler, Image, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
@@ -105,6 +105,17 @@ export function PhotoFitEditor({
     ],
   }));
 
+  useEffect(() => {
+    if (!image) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [image, onClose]);
+
+  if (!image) return null;
+
   const reset = () => {
     scale.value = withTiming(1);
     tx.value = withTiming(0);
@@ -120,44 +131,56 @@ export function PhotoFitEditor({
   };
 
   return (
-    <Modal
-      visible={!!image}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-      statusBarTranslucent
-      navigationBarTranslucent
+    <View
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 50,
+        elevation: 50,
+        backgroundColor: '#000',
+      }}
     >
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000' }}>
-        <View
-          className="flex-row items-center justify-between px-4"
-          style={{ paddingTop: insets.top + 8 }}
+      <View
+        className="flex-row items-center justify-between px-4"
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        <Button
+          variant="gray"
+          size="icon"
+          accessibilityLabel={cancelLabel}
+          onPress={onClose}
+          className="bg-white/25"
         >
-          <Button
-            variant="gray"
-            size="icon"
-            accessibilityLabel={cancelLabel}
-            onPress={onClose}
-            className="bg-white/25"
-          >
-            <Icon as={X} className="text-white" />
-          </Button>
-          <Text variant="headline" className="text-white">
-            {title}
-          </Text>
-          <Button variant="plain" onPress={reset}>
-            <Text className="text-white">{resetLabel}</Text>
-          </Button>
-        </View>
+          <Icon as={X} className="text-white" />
+        </Button>
+        <Text variant="headline" className="text-white">
+          {title}
+        </Text>
+        <Button variant="plain" onPress={reset}>
+          <Text className="text-white">{resetLabel}</Text>
+        </Button>
+      </View>
 
-        <GestureDetector gesture={gesture}>
-          <View
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-            onLayout={(e) => setStage(e.nativeEvent.layout)}
-          >
-            {image && frameW > 0 ? (
-              <View style={{ width: frameW, height: frameH }}>
-                <Animated.View style={[photoBox, { opacity: 0.35 }, photoStyle]}>
+      <GestureDetector gesture={gesture}>
+        <View
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          onLayout={(e) => setStage(e.nativeEvent.layout)}
+        >
+          {image && frameW > 0 ? (
+            <View style={{ width: frameW, height: frameH }}>
+              <Animated.View style={[photoBox, { opacity: 0.35 }, photoStyle]}>
+                <Image
+                  fadeDuration={0}
+                  source={{ uri: image.uri }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+              </Animated.View>
+              <View style={{ width: frameW, height: frameH, overflow: 'hidden' }}>
+                <Animated.View style={[photoBox, photoStyle]}>
                   <Image
                     fadeDuration={0}
                     source={{ uri: image.uri }}
@@ -165,42 +188,32 @@ export function PhotoFitEditor({
                     resizeMode="cover"
                   />
                 </Animated.View>
-                <View style={{ width: frameW, height: frameH, overflow: 'hidden' }}>
-                  <Animated.View style={[photoBox, photoStyle]}>
-                    <Image
-                      fadeDuration={0}
-                      source={{ uri: image.uri }}
-                      style={{ width: '100%', height: '100%' }}
-                      resizeMode="cover"
-                    />
-                  </Animated.View>
-                </View>
-                <View
-                  pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    width: frameW,
-                    height: frameH,
-                    borderWidth: 2,
-                    borderColor: FRAME_COLOR,
-                  }}
-                />
               </View>
-            ) : null}
-          </View>
-        </GestureDetector>
-
-        <View className="items-center px-4" style={{ paddingBottom: insets.bottom + 16 }}>
-          <Button
-            className="w-full"
-            onPress={() =>
-              image && onApply({ scale: scale.value, offsetX: tx.value, offsetY: ty.value })
-            }
-          >
-            <Text>{doneLabel}</Text>
-          </Button>
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  width: frameW,
+                  height: frameH,
+                  borderWidth: 2,
+                  borderColor: FRAME_COLOR,
+                }}
+              />
+            </View>
+          ) : null}
         </View>
-      </GestureHandlerRootView>
-    </Modal>
+      </GestureDetector>
+
+      <View className="items-center px-4" style={{ paddingBottom: insets.bottom + 16 }}>
+        <Button
+          className="w-full"
+          onPress={() =>
+            image && onApply({ scale: scale.value, offsetX: tx.value, offsetY: ty.value })
+          }
+        >
+          <Text>{doneLabel}</Text>
+        </Button>
+      </View>
+    </View>
   );
 }

@@ -3,6 +3,8 @@ import { useSQLiteContext } from 'expo-sqlite';
 import {
   Camera,
   Expand,
+  Redo2,
+  Undo2,
   Images,
   LayoutGrid,
   Save,
@@ -238,6 +240,28 @@ export default function EditorScreen() {
       />
 
       <View className="flex-1">
+        {api.canUndo || api.canRedo ? (
+          <View className="absolute left-3 top-2 z-10 flex-row gap-2">
+            <Button
+              variant="gray"
+              size="icon"
+              accessibilityLabel={t('editor.undo')}
+              disabled={!api.canUndo}
+              onPress={api.undo}
+            >
+              <Icon as={Undo2} size={20} />
+            </Button>
+            <Button
+              variant="gray"
+              size="icon"
+              accessibilityLabel={t('editor.redo')}
+              disabled={!api.canRedo}
+              onPress={api.redo}
+            >
+              <Icon as={Redo2} size={20} />
+            </Button>
+          </View>
+        ) : null}
         <View
           className="flex-1 items-center justify-center"
           onLayout={(e) => setArea(e.nativeEvent.layout)}

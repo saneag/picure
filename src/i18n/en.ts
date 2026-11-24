@@ -57,6 +57,8 @@ export const en = {
     expand: 'Expand',
     adjustPhoto: 'Adjust photo',
     resetFit: 'Reset',
+    undo: 'Undo',
+    redo: 'Redo',
     removePhoto: 'Remove',
     emptyHint: 'Add at least one photo to save.',
     reduceTitle: 'Remove photos?',
