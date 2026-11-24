@@ -215,16 +215,14 @@ export default function EditorScreen() {
         backLabel=""
         right={
           <>
-            {getLayoutsForCount(count).length > 1 ? (
-              <Button
-                variant="plain"
-                size="icon"
-                accessibilityLabel={t('editor.layout')}
-                onPress={() => setLayoutOpen(true)}
-              >
-                <Icon as={LayoutGrid} size={22} />
-              </Button>
-            ) : null}
+            <Button
+              variant="plain"
+              size="icon"
+              accessibilityLabel={t('editor.layout')}
+              onPress={() => setLayoutOpen(true)}
+            >
+              <Icon as={LayoutGrid} size={22} />
+            </Button>
             <Button
               variant="plain"
               size="icon"
@@ -325,13 +323,6 @@ export default function EditorScreen() {
         closeLabel={t('common.done')}
         onClose={() => setLayoutOpen(false)}
       >
-        <LayoutPicker count={count} value={draft.layoutId} onChange={api.setLayout} />
-      </BottomSheet>
-      <BottomSheet
-        visible={detailsOpen}
-        closeLabel={t('common.done')}
-        onClose={() => setDetailsOpen(false)}
-      >
         <View className="mb-4 flex-row items-center justify-between gap-4">
           <Text variant="subhead">{t('editor.images')}</Text>
           <SegmentedControl<number>
@@ -341,6 +332,15 @@ export default function EditorScreen() {
             options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
           />
         </View>
+        {getLayoutsForCount(count).length > 1 ? (
+          <LayoutPicker count={count} value={draft.layoutId} onChange={api.setLayout} />
+        ) : null}
+      </BottomSheet>
+      <BottomSheet
+        visible={detailsOpen}
+        closeLabel={t('common.done')}
+        onClose={() => setDetailsOpen(false)}
+      >
         <View className="mb-4 flex-row items-center justify-between gap-4">
           <Text variant="subhead">{t('editor.showMargins')}</Text>
           <Switch
