@@ -332,6 +332,14 @@ export default function EditorScreen() {
             options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
           />
         </View>
+        <View className="mb-4 flex-row items-center justify-between gap-4">
+          <Text variant="subhead">{t('editor.showMargins')}</Text>
+          <Switch
+            value={draft.showMargins}
+            onValueChange={api.setShowMargins}
+            accessibilityLabel={t('editor.showMargins')}
+          />
+        </View>
         {getLayoutsForCount(count).length > 1 ? (
           <LayoutPicker count={count} value={draft.layoutId} onChange={api.setLayout} />
         ) : null}
@@ -341,14 +349,6 @@ export default function EditorScreen() {
         closeLabel={t('common.done')}
         onClose={() => setDetailsOpen(false)}
       >
-        <View className="mb-4 flex-row items-center justify-between gap-4">
-          <Text variant="subhead">{t('editor.showMargins')}</Text>
-          <Switch
-            value={draft.showMargins}
-            onValueChange={api.setShowMargins}
-            accessibilityLabel={t('editor.showMargins')}
-          />
-        </View>
         <PatientForm value={draft.patient} onChange={api.setPatient} />
       </BottomSheet>
 
