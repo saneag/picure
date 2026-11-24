@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, PersonStanding, RotateCcw } from 'lucide-react-native';
+import { ChevronLeft, Grid3x3, RotateCcw } from 'lucide-react-native';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -10,7 +10,9 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
-import { SilhouetteGuide } from '@/features/camera/SilhouetteGuide';
+import { GridGuide } from '@/features/camera/GridGuide';
+import { PoseMenu } from '@/features/camera/PoseMenu';
+import { SilhouetteGuide, type Pose } from '@/features/camera/SilhouetteGuide';
 import { getBackCameraInfo } from '../modules/picure-camera-info';
 import { useDraft } from '@/features/collage/draft-context';
 import { newId } from '@/lib/id';
@@ -50,7 +52,8 @@ export default function CameraScreen() {
   const [error, setError] = useState<string | null>(null);
   const camera = useRef<CameraView>(null);
   const { maxRatio, presets } = useMemo(readZoomOptions, []);
-  const [guide, setGuide] = useState(true);
+  const [pose, setPose] = useState<Pose | null>(null);
+  const [grid, setGrid] = useState(false);
   const [ratio, setRatio] = useState(1);
   const startRatio = useRef(1);
 
@@ -108,7 +111,8 @@ export default function CameraScreen() {
           />
         </View>
       </GestureDetector>
-      {guide ? <SilhouetteGuide /> : null}
+      {grid ? <GridGuide /> : null}
+      {pose ? <SilhouetteGuide {...pose} /> : null}
       <Pressable
         accessibilityLabel={t('camera.cancel')}
         onPress={() => router.back()}
@@ -117,13 +121,14 @@ export default function CameraScreen() {
       >
         <Icon as={ChevronLeft} className="text-white" size={28} />
       </Pressable>
+      <PoseMenu pose={pose} onChange={setPose} top={insets.top + 8} />
       <Pressable
-        accessibilityLabel={t('camera.guide')}
-        onPress={() => setGuide((on) => !on)}
+        accessibilityLabel={t('camera.grid')}
+        onPress={() => setGrid((on) => !on)}
         className="absolute right-4 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-        style={{ top: insets.top + 8 }}
+        style={{ top: insets.top + 120 }}
       >
-        <Icon as={PersonStanding} className={guide ? 'text-primary' : 'text-white'} size={26} />
+        <Icon as={Grid3x3} className={grid ? 'text-primary' : 'text-white'} size={24} />
       </Pressable>
       <View
         className="absolute inset-x-0 bottom-0 items-center gap-5"

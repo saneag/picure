@@ -1,6 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { View } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { CollageCell } from './CollageCell';
 import {
   CANVAS_ASPECT,
@@ -10,6 +13,7 @@ import {
   MAX_RATIO,
   MIN_RATIO,
   resolveRatios,
+  type Node,
   type Split,
 } from './layouts';
 import type { CollageImage, SlotCount } from './types';
@@ -32,7 +36,13 @@ interface CollageCanvasProps {
 }
 
 /** Draws the collage at any size. The same component renders the editor preview and the export. */
-export function CollageCanvas({
+export function CollageCanvas(props: CollageCanvasProps) {
+  const layout = getLayout(props.layoutId, props.slots.length as SlotCount);
+  // Remount per layout so the live ratios always match the layout tree.
+  return <CanvasBody key={layout.id} {...props} layoutId={layout.id} />;
+}
+
+function CanvasBody({
   layoutId,
   slots,
   ratios,
@@ -47,11 +57,15 @@ export function CollageCanvas({
 }: CollageCanvasProps) {
   const height = width / CANVAS_ASPECT;
   const layout = getLayout(layoutId, slots.length as SlotCount);
-  // While dragging, only this canvas re-renders; the draft is updated once when the drag ends.
-  const [live, setLive] = useState<number[] | null>(null);
-  const activeRatios = live ?? resolveRatios(layout, ratios);
-  const cells = computeCells(layout, width, height, 0, activeRatios);
-  const { splits } = computeLayout(layout.tree, activeRatios);
+  const resolved = resolveRatios(layout, ratios);
+  const cells = computeCells(layout, width, height, 0, resolved);
+  const { splits } = computeLayout(layout.tree, resolved);
+
+  // Dragging a divider only changes this shared value (UI thread); the draft is saved once on release.
+  const live = useSharedValue(resolved);
+  useEffect(() => {
+    live.value = resolved;
+  }, [resolved]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <View style={{ width, height }} className="overflow-hidden bg-white" collapsable={false}>
@@ -59,6 +73,10 @@ export function CollageCanvas({
         <CollageCell
           key={index}
           rect={rect}
+          tree={layout.tree}
+          ratios={live}
+          index={index}
+          canvasHeight={height}
           image={slots[index] ?? null}
           canvasWidth={width}
           interactive={interactive}
@@ -73,14 +91,14 @@ export function CollageCanvas({
         ? splits.map((split, index) => (
             <SplitHandle
               key={`split-${index}`}
-              split={split}
+              tree={layout.tree}
+              ratios={live}
+              index={index}
+              dir={split.dir}
+              staticSplit={split}
               width={width}
               height={height}
-              onChange={(ratio) => setLive(activeRatios.map((r, i) => (i === index ? ratio : r)))}
-              onEnd={(ratio) => {
-                onRatioChange(index, ratio);
-                setLive(null);
-              }}
+              onEnd={(ratio) => onRatioChange(index, ratio)}
             />
           ))
         : null}
@@ -90,38 +108,9 @@ export function CollageCanvas({
 
 const HANDLE_THICKNESS = 36;
 
-/** Draggable divider between two parts of the layout. */
-function SplitHandle({
-  split,
-  width,
-  height,
-  onChange,
-  onEnd,
-}: {
-  split: Split;
-  width: number;
-  height: number;
-  onChange: (ratio: number) => void;
-  onEnd: (ratio: number) => void;
-}) {
-  const startRatio = useRef(split.ratio);
-  const horizontal = split.dir === 'row';
-  const areaSize = (horizontal ? split.rect.width * width : split.rect.height * height) || 1;
-
-  const ratioAt = (e: { translationX: number; translationY: number }) => {
-    const delta = (horizontal ? e.translationX : e.translationY) / areaSize;
-    return Math.min(MAX_RATIO, Math.max(MIN_RATIO, startRatio.current + delta));
-  };
-
-  const pan = Gesture.Pan()
-    .runOnJS(true)
-    .onStart(() => {
-      startRatio.current = split.ratio;
-    })
-    .onUpdate((e) => onChange(ratioAt(e)))
-    .onEnd((e) => onEnd(ratioAt(e)));
-
-  const position = horizontal
+function handleFrame(split: Split, width: number, height: number) {
+  'worklet';
+  return split.dir === 'row'
     ? {
         left: (split.rect.x + split.rect.width * split.ratio) * width - HANDLE_THICKNESS / 2,
         top: split.rect.y * height,
@@ -134,14 +123,67 @@ function SplitHandle({
         width: split.rect.width * width,
         height: HANDLE_THICKNESS,
       };
+}
+
+/** Draggable divider between two parts of the layout; runs entirely on the UI thread. */
+function SplitHandle({
+  tree,
+  ratios,
+  index,
+  dir,
+  staticSplit,
+  width,
+  height,
+  onEnd,
+}: {
+  tree: Node;
+  ratios: SharedValue<number[]>;
+  index: number;
+  dir: 'row' | 'col';
+  staticSplit: Split;
+  width: number;
+  height: number;
+  onEnd: (ratio: number) => void;
+}) {
+  const startRatio = useSharedValue(0);
+  const horizontal = dir === 'row';
+
+  const ratioAt = (translation: number) => {
+    'worklet';
+    const split = computeLayout(tree, ratios.value).splits[index];
+    const area = (horizontal ? split.rect.width * width : split.rect.height * height) || 1;
+    return Math.min(MAX_RATIO, Math.max(MIN_RATIO, startRatio.value + translation / area));
+  };
+
+  const pan = Gesture.Pan()
+    .onStart(() => {
+      startRatio.value = ratios.value[index];
+    })
+    .onUpdate((e) => {
+      const next = ratioAt(horizontal ? e.translationX : e.translationY);
+      ratios.value = ratios.value.map((r, i) => (i === index ? next : r));
+    })
+    .onEnd((e) => {
+      scheduleOnRN(onEnd, ratioAt(horizontal ? e.translationX : e.translationY));
+    });
+
+  const animated = useAnimatedStyle(() =>
+    handleFrame(computeLayout(tree, ratios.value).splits[index], width, height),
+  );
 
   return (
     <GestureDetector gesture={pan}>
-      <View style={position} className="absolute items-center justify-center">
+      <Animated.View
+        style={[
+          { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
+          handleFrame(staticSplit, width, height),
+          animated,
+        ]}
+      >
         <View
           className={`rounded-full bg-white/90 shadow ${horizontal ? 'h-10 w-1.5' : 'h-1.5 w-10'}`}
         />
-      </View>
+      </Animated.View>
     </GestureDetector>
   );
 }

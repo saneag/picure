@@ -122,7 +122,7 @@ export default function GalleryPickerScreen() {
     <View className="flex-1 bg-background">
       <ScreenHeader
         title={t('picker.title')}
-        backLabel={t('common.cancel')}
+        backLabel=""
         right={
           <Button
             variant="plain"

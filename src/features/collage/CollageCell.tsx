@@ -1,13 +1,17 @@
 import { ImagePlus, ImageOff } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, Text as RNText, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { clampPan, clampScale, coverSize } from './geometry';
-import type { Rect } from './layouts';
+import { computeLayout, type Node, type Rect } from './layouts';
 import type { CollageImage, ImageLabel, LabelPosition, LabelSize } from './types';
 
 const LABEL_FONT_RATIO: Record<LabelSize, number> = { sm: 0.035, md: 0.05, lg: 0.07 };
@@ -22,7 +26,13 @@ const LABEL_POSITION_CLASS: Record<LabelPosition, string> = {
 };
 
 interface CollageCellProps {
+  /** Static position, used for the first frame and for exports. */
   rect: Rect;
+  /** Live split ratios (UI thread); the cell follows them while a divider is dragged. */
+  tree: Node;
+  ratios: SharedValue<number[]>;
+  index: number;
+  canvasHeight: number;
   image: CollageImage | null;
   /** Width of the whole collage in px; label size scales with it so exports match the preview. */
   canvasWidth: number;
@@ -36,6 +46,10 @@ interface CollageCellProps {
 
 export function CollageCell({
   rect,
+  tree,
+  ratios,
+  index,
+  canvasHeight,
   image,
   canvasWidth,
   interactive,
@@ -45,35 +59,55 @@ export function CollageCell({
   onPress,
   onTransformEnd,
 }: CollageCellProps) {
-  const frame = { left: rect.x, top: rect.y, width: rect.width, height: rect.height };
+  const staticFrame = { left: rect.x, top: rect.y, width: rect.width, height: rect.height };
+  const frame = useAnimatedStyle(() => {
+    const r = computeLayout(tree, ratios.value).cells[index];
+    return {
+      left: r.x * canvasWidth,
+      top: r.y * canvasHeight,
+      width: r.width * canvasWidth,
+      height: r.height * canvasHeight,
+    };
+  });
+  const frameStyle = [
+    { position: 'absolute' as const, overflow: 'hidden' as const },
+    staticFrame,
+    frame,
+  ];
 
   if (!image) {
     return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={addLabel}
-        disabled={!interactive}
-        onPress={onPress}
-        style={frame}
-        className="absolute items-center justify-center gap-1 bg-secondary"
-      >
-        {interactive ? (
-          <>
-            <Icon as={ImagePlus} size={28} className="text-muted-foreground" />
-            <Text variant="footnote">{addLabel}</Text>
-          </>
-        ) : null}
-        {selected ? <SelectionRing /> : null}
-      </Pressable>
+      <Animated.View style={frameStyle}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={addLabel}
+          disabled={!interactive}
+          onPress={onPress}
+          style={{ flex: 1 }}
+          className="items-center justify-center gap-1 bg-secondary"
+        >
+          {interactive ? (
+            <>
+              <Icon as={ImagePlus} size={28} className="text-muted-foreground" />
+              <Text variant="footnote">{addLabel}</Text>
+            </>
+          ) : null}
+          {selected ? <SelectionRing /> : null}
+        </Pressable>
+      </Animated.View>
     );
   }
 
   return (
     <PhotoCell
-      frame={frame}
+      frameStyle={frameStyle}
+      tree={tree}
+      ratios={ratios}
+      index={index}
+      canvasWidth={canvasWidth}
+      canvasHeight={canvasHeight}
       rect={rect}
       image={image}
-      canvasWidth={canvasWidth}
       interactive={interactive}
       selected={selected}
       missingLabel={missingLabel}
@@ -87,14 +121,18 @@ function SelectionRing() {
   return <View pointerEvents="none" className="absolute inset-0 border-[3px] border-primary" />;
 }
 
-interface PhotoCellProps extends Omit<CollageCellProps, 'image'> {
+interface PhotoCellProps extends CollageCellProps {
   image: CollageImage;
-  frame: { left: number; top: number; width: number; height: number };
+  frameStyle: unknown;
 }
 
 function PhotoCell({
-  frame,
   rect,
+  frameStyle,
+  tree,
+  ratios,
+  index,
+  canvasHeight,
   image,
   canvasWidth,
   interactive,
@@ -104,30 +142,33 @@ function PhotoCell({
   onTransformEnd,
 }: PhotoCellProps) {
   const [failed, setFailed] = useState(false);
-  const cover = coverSize(image, rect);
 
+  // Pan is stored as a fraction of the cell size so it stays valid while the cell is resized.
   const scale = useSharedValue(image.scale);
-  const tx = useSharedValue(0);
-  const ty = useSharedValue(0);
+  const tx = useSharedValue(image.offsetX);
+  const ty = useSharedValue(image.offsetY);
   const startScale = useSharedValue(1);
   const startTx = useSharedValue(0);
   const startTy = useSharedValue(0);
 
-  // Re-sync when the collage changes (replace, undo, layout switch changes the cell size).
   useEffect(() => {
     setFailed(false);
     scale.value = image.scale;
-    tx.value = clampPan(image.offsetX * rect.width, cover.width, rect.width, image.scale);
-    ty.value = clampPan(image.offsetY * rect.height, cover.height, rect.height, image.scale);
-  }, [image.uri, image.scale, image.offsetX, image.offsetY, rect.width, rect.height]); // eslint-disable-line react-hooks/exhaustive-deps
+    tx.value = image.offsetX;
+    ty.value = image.offsetY;
+  }, [image.uri, image.scale, image.offsetX, image.offsetY]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const commit = (nextScale: number, x: number, y: number) =>
-    onTransformEnd?.({ scale: nextScale, offsetX: x / rect.width, offsetY: y / rect.height });
+  const imageWidth = image.width;
+  const imageHeight = image.height;
 
-  const cw = cover.width;
-  const ch = cover.height;
-  const cellW = rect.width;
-  const cellH = rect.height;
+  const metrics = () => {
+    'worklet';
+    const r = computeLayout(tree, ratios.value).cells[index];
+    const w = r.width * canvasWidth;
+    const h = r.height * canvasHeight;
+    const cover = coverSize({ width: imageWidth, height: imageHeight }, { width: w, height: h });
+    return { w, h, cover };
+  };
 
   const pan = Gesture.Pan()
     .minDistance(4)
@@ -136,8 +177,9 @@ function PhotoCell({
       startTy.value = ty.value;
     })
     .onUpdate((e) => {
-      tx.value = clampPan(startTx.value + e.translationX, cw, cellW, scale.value);
-      ty.value = clampPan(startTy.value + e.translationY, ch, cellH, scale.value);
+      const { w, h, cover } = metrics();
+      tx.value = clampPan(startTx.value * w + e.translationX, cover.width, w, scale.value) / w;
+      ty.value = clampPan(startTy.value * h + e.translationY, cover.height, h, scale.value) / h;
     })
     .onEnd(() => {
       scheduleOnRN(commit, scale.value, tx.value, ty.value);
@@ -148,14 +190,18 @@ function PhotoCell({
       startScale.value = scale.value;
     })
     .onUpdate((e) => {
+      const { w, h, cover } = metrics();
       const next = clampScale(startScale.value * e.scale);
       scale.value = next;
-      tx.value = clampPan(tx.value, cw, cellW, next);
-      ty.value = clampPan(ty.value, ch, cellH, next);
+      tx.value = clampPan(tx.value * w, cover.width, w, next) / w;
+      ty.value = clampPan(ty.value * h, cover.height, h, next) / h;
     })
     .onEnd(() => {
       scheduleOnRN(commit, scale.value, tx.value, ty.value);
     });
+
+  const commit = (nextScale: number, x: number, y: number) =>
+    onTransformEnd?.({ scale: nextScale, offsetX: x, offsetY: y });
 
   const tap = Gesture.Tap().onEnd((_e, success) => {
     if (success && onPress) scheduleOnRN(onPress);
@@ -163,42 +209,64 @@ function PhotoCell({
 
   const gesture = Gesture.Race(tap, Gesture.Simultaneous(pan, pinch));
 
-  const imageStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
-  }));
+  // The image view keeps the size it had when first shown and follows the cell via transforms.
+  // The anchor only changes with the photo or canvas size, so releasing a divider causes no jump.
+  const anchorKey = `${image.uri}|${canvasWidth}|${canvasHeight}`;
+  const anchorRef = useRef<{ key: string; rect: Rect } | null>(null);
+  if (anchorRef.current?.key !== anchorKey) anchorRef.current = { key: anchorKey, rect };
+  const anchor = anchorRef.current.rect;
+  const base = coverSize(image, anchor);
+  const imageStyle = useAnimatedStyle(() => {
+    const { w, h, cover } = metrics();
+    const fit = cover.width / base.width;
+    return {
+      transform: [
+        {
+          translateX: (w - anchor.width) / 2 + clampPan(tx.value * w, cover.width, w, scale.value),
+        },
+        {
+          translateY:
+            (h - anchor.height) / 2 + clampPan(ty.value * h, cover.height, h, scale.value),
+        },
+        { scale: scale.value * fit },
+      ],
+    };
+  });
 
   const content = (
-    <View style={frame} className="absolute overflow-hidden bg-secondary">
-      {failed ? (
-        <View className="absolute inset-0 items-center justify-center gap-1 px-2">
-          <Icon as={ImageOff} size={26} className="text-muted-foreground" />
-          <Text variant="footnote" className="text-center">
-            {missingLabel}
-          </Text>
-        </View>
-      ) : (
-        <Animated.View
-          style={[
-            {
-              position: 'absolute',
-              width: cover.width,
-              height: cover.height,
-              left: (rect.width - cover.width) / 2,
-              top: (rect.height - cover.height) / 2,
-            },
-            imageStyle,
-          ]}
-        >
-          <Image
-            source={{ uri: image.uri }}
-            style={{ width: '100%', height: '100%' }}
-            onError={() => setFailed(true)}
-          />
-        </Animated.View>
-      )}
-      <LabelOverlay label={image.label} canvasWidth={canvasWidth} />
-      {selected ? <SelectionRing /> : null}
-    </View>
+    <Animated.View style={frameStyle as never}>
+      <View style={{ flex: 1 }} className="overflow-hidden bg-secondary">
+        {failed ? (
+          <View className="absolute inset-0 items-center justify-center gap-1 px-2">
+            <Icon as={ImageOff} size={26} className="text-muted-foreground" />
+            <Text variant="footnote" className="text-center">
+              {missingLabel}
+            </Text>
+          </View>
+        ) : (
+          <Animated.View
+            style={[
+              {
+                position: 'absolute',
+                width: base.width,
+                height: base.height,
+                left: (anchor.width - base.width) / 2,
+                top: (anchor.height - base.height) / 2,
+              },
+              imageStyle,
+            ]}
+          >
+            <Image
+              source={{ uri: image.uri }}
+              style={{ width: '100%', height: '100%' }}
+              onError={() => setFailed(true)}
+            />
+          </Animated.View>
+        )}
+        <LabelOverlay label={image.label} canvasWidth={canvasWidth} />
+        {selected ? <SelectionRing /> : null}
+      </View>
+    </Animated.View>
   );
 
   if (!interactive) return content;

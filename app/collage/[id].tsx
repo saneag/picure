@@ -41,7 +41,7 @@ export default function CollageDetailScreen() {
   if (collage === null) {
     return (
       <View className="flex-1 bg-grouped">
-        <ScreenHeader title={t('detail.title')} backLabel={t('tabs.collages')} />
+        <ScreenHeader title={t('detail.title')} backLabel="" />
         <Text variant="subhead" className="p-8 text-center">
           {t('detail.loadFailed')}
         </Text>
@@ -94,8 +94,12 @@ export default function CollageDetailScreen() {
     <View className="flex-1 bg-grouped">
       <ScreenHeader
         title={patient.name || t('common.untitled')}
-        backLabel={t('tabs.collages')}
-        right={<Button variant="plain" size="compact" label={t('detail.edit')} onPress={edit} />}
+        backLabel=""
+        right={
+          <Button variant="plain" size="icon" accessibilityLabel={t('detail.edit')} onPress={edit}>
+            <Icon as={Pencil} size={22} />
+          </Button>
+        }
       />
       <ScrollView contentContainerClassName="px-4 pb-10 pt-2">
         <Pressable

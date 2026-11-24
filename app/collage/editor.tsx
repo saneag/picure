@@ -24,14 +24,17 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Text } from '@/components/ui/text';
 import { CollageCanvas } from '@/features/collage/CollageCanvas';
 import { useDraft } from '@/features/collage/draft-context';
-import { ImageViewer } from '@/features/collage/ImageViewer';
+import { PhotoFitEditor } from '@/features/collage/PhotoFitEditor';
 import { LabelSheet } from '@/features/collage/LabelSheet';
 import { LayoutPicker } from '@/features/collage/LayoutPicker';
 import {
   CANVAS_ASPECT,
   EXPORT_HEIGHT,
   EXPORT_WIDTH,
+  computeLayout,
+  getLayout,
   getLayoutsForCount,
+  resolveRatios,
 } from '@/features/collage/layouts';
 import { SaveSheet, type SaveOptions } from '@/features/collage/SaveSheet';
 import type { SlotCount } from '@/features/collage/types';
@@ -62,7 +65,7 @@ export default function EditorScreen() {
   const [area, setArea] = useState({ width: 0, height: 0 });
   const [labelOpen, setLabelOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [fitOpen, setFitOpen] = useState(false);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [busy, setBusy] = useState(false);
   const exportRef = useRef<ComponentRef<typeof View>>(null);
@@ -109,6 +112,9 @@ export default function EditorScreen() {
   const slot = Math.min(selected, count - 1);
   const image = draft.slots[slot];
   const hasAnyImage = draft.slots.some((s) => s !== null);
+  const layoutDef = getLayout(draft.layoutId, count);
+  const cell = computeLayout(layoutDef.tree, resolveRatios(layoutDef, draft.ratios)).cells[slot];
+  const cellAspect = cell ? (cell.width / cell.height) * CANVAS_ASPECT : CANVAS_ASPECT;
   const canvasWidth = Math.max(0, Math.min(area.width, area.height * CANVAS_ASPECT));
 
   const changeCount = (next: SlotCount) => {
@@ -268,7 +274,7 @@ export default function EditorScreen() {
               <ToolButton
                 icon={Expand}
                 label={t('editor.expand')}
-                onPress={() => setViewerUri(image.uri)}
+                onPress={() => setFitOpen(true)}
               />
               <ToolButton
                 icon={Trash2}
@@ -332,10 +338,18 @@ export default function EditorScreen() {
         onClose={() => setSaveOpen(false)}
         onSave={requestSave}
       />
-      <ImageViewer
-        uri={viewerUri}
-        closeLabel={t('common.done')}
-        onClose={() => setViewerUri(null)}
+      <PhotoFitEditor
+        image={fitOpen && image ? image : null}
+        aspect={cellAspect}
+        title={t('editor.adjustPhoto')}
+        resetLabel={t('editor.resetFit')}
+        doneLabel={t('common.done')}
+        cancelLabel={t('common.cancel')}
+        onApply={(transform) => {
+          api.updateImage(slot, transform);
+          setFitOpen(false);
+        }}
+        onClose={() => setFitOpen(false)}
       />
       <ConfirmDialog
         open={dialog !== null}

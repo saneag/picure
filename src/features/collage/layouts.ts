@@ -9,7 +9,7 @@ export interface Rect {
 }
 
 /** A cell index, or a split of the area into two parts. `row` = side by side, `col` = stacked. */
-type Node = number | { dir: 'row' | 'col'; a: Node; b: Node };
+export type Node = number | { dir: 'row' | 'col'; a: Node; b: Node };
 
 /** A draggable divider. `rect` is the area it splits and `ratio` is the share of the first part. */
 export interface Split {
@@ -41,6 +41,7 @@ const col = (a: Node, b: Node): Node => ({ dir: 'col', a, b });
 
 /** Places the cells and dividers of a layout for the given split ratios (fractions of the canvas). */
 export function computeLayout(tree: Node, ratios: number[]): { cells: Rect[]; splits: Split[] } {
+  'worklet';
   const cells: Rect[] = [];
   const splits: Split[] = [];
   let next = 0;
