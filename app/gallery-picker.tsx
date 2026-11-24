@@ -2,13 +2,18 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
+import { AppState, FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { Text } from '@/components/ui/text';
 import { useDraft } from '@/features/collage/draft-context';
-import { loadGalleryPage, requestGalleryAccess, type GalleryPhoto } from '@/services/gallery';
+import {
+  loadGalleryPage,
+  onGalleryChange,
+  requestGalleryAccess,
+  type GalleryPhoto,
+} from '@/services/gallery';
 
 const COLUMNS = 3;
 
@@ -52,6 +57,32 @@ export default function GalleryPickerScreen() {
       loading.current = false;
     }
   }, [cursor, hasMore]);
+
+  /** Reloads the first page so photos added since the grid opened show up at the top. */
+  const refresh = useCallback(async () => {
+    if (loading.current) return;
+    loading.current = true;
+    try {
+      const page = await loadGalleryPage();
+      setPhotos(page.photos);
+      setCursor(page.endCursor);
+      setHasMore(page.hasNextPage);
+    } finally {
+      loading.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!allowed) return;
+    const stopGallery = onGalleryChange(refresh);
+    const stopApp = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    return () => {
+      stopGallery();
+      stopApp.remove();
+    };
+  }, [allowed, refresh]);
 
   useEffect(() => {
     requestGalleryAccess().then(setAllowed);

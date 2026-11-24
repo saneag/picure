@@ -17,13 +17,23 @@ export async function requestGalleryAccess(): Promise<boolean> {
   return next.granted;
 }
 
-/** Lists gallery photos newest first. Returns references only; nothing is copied. */
+/** Calls `listener` when photos are added to or removed from the gallery. Returns an unsubscribe. */
+export function onGalleryChange(listener: () => void): () => void {
+  const subscription = MediaLibrary.addListener(() => listener());
+  return () => subscription.remove();
+}
+
+/**
+ * Lists gallery photos, most recently added first (media id order). Sorting by creation time would
+ * bury photos that have no or an old taken date, such as downloads and copies.
+ * Returns references only; nothing is copied.
+ */
 export async function loadGalleryPage(after?: string) {
   const page = await MediaLibrary.getAssetsAsync({
     first: PAGE_SIZE,
     after,
     mediaType: MediaLibrary.MediaType.photo,
-    sortBy: [[MediaLibrary.SortBy.creationTime, false]],
+    sortBy: [[MediaLibrary.SortBy.default, false]],
   });
   return {
     photos: page.assets.map<GalleryPhoto>((asset) => ({
