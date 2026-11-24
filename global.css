@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --grouped: 240 17% 96%;
+    --card: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --secondary: 240 6% 93%;
+    --muted: 240 6% 93%;
+    --muted-foreground: 240 4% 46%;
+    --separator: 240 5% 80%;
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 3 100% 59%;
+  }
+
+  .dark:root {
+    --background: 0 0% 0%;
+    --grouped: 0 0% 0%;
+    --card: 240 3% 11%;
+    --foreground: 0 0% 100%;
+    --secondary: 240 3% 17%;
+    --muted: 240 3% 17%;
+    --muted-foreground: 240 4% 62%;
+    --separator: 240 3% 25%;
+    --primary: 211 100% 52%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 3 100% 61%;
+  }
+}
