@@ -113,18 +113,31 @@ export default function CollageDetailScreen() {
           />
         </Pressable>
 
-        <Section title={t('detail.patient')}>
-          <Row label={t('detail.name')} value={patient.name || '—'} />
-          <Row label={t('detail.email')} value={patient.email || '—'} />
-          <Row label={t('detail.phone')} value={patient.phone || '—'} />
-          <Row label={t('detail.procedures')} value={String(patient.procedureCount)} />
+        <Text variant="caption" className="mb-1.5 px-4">
+          {t('detail.patient')}
+        </Text>
+        <View className="mb-6 gap-3">
+          <Section className="mb-0">
+            <Row label={t('detail.name')} value={patient.name || '—'} />
+          </Section>
+          <Section className="mb-0">
+            <Row label={t('detail.email')} value={patient.email || '—'} />
+          </Section>
+          <Section className="mb-0">
+            <Row label={t('detail.phone')} value={patient.phone || '—'} />
+          </Section>
+          <Section className="mb-0">
+            <Row label={t('detail.procedures')} value={String(patient.procedureCount)} />
+          </Section>
           {patient.description ? (
-            <View className="gap-1 px-4 py-3">
-              <Text variant="footnote">{t('detail.description')}</Text>
-              <Text>{patient.description}</Text>
-            </View>
+            <Section className="mb-0">
+              <View className="gap-1 px-4 pb-3 pt-4">
+                <Text variant="footnote">{t('detail.description')}</Text>
+                <Text>{patient.description}</Text>
+              </View>
+            </Section>
           ) : null}
-        </Section>
+        </View>
 
         <Section>
           <Row label={t('detail.edit')} onPress={edit} right={<Icon as={Pencil} size={18} />} />
