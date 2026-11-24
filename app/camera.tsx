@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, PersonStanding, RotateCcw } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -11,13 +11,26 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { SilhouetteGuide } from '@/features/camera/SilhouetteGuide';
+import { getBackCameraInfo } from '../modules/picure-camera-info';
 import { useDraft } from '@/features/collage/draft-context';
 import { newId } from '@/lib/id';
 import { storeCameraPhoto } from '@/services/file-storage';
 
-// expo-camera maps zoom 0..1 onto 1x..maxRatio; most phones top out around 10x.
-const MAX_ZOOM_RATIO = 10;
-const ZOOM_PRESETS = [1, 3, 10];
+/**
+ * Zoom buttons for this phone: 1x, each telephoto lens it really has, and the maximum digital zoom.
+ * expo-camera cannot zoom out below 1x, so ultra-wide ratios are left out.
+ */
+function readZoomOptions() {
+  const info = getBackCameraInfo();
+  const maxRatio = Math.max(1, info?.maxZoom ?? 1);
+  // Lenses are marketed as whole numbers (3x), but measured values are slightly off (2.9).
+  const snap = (r: number) => (Math.abs(r - Math.round(r)) < 0.25 ? Math.round(r) : r);
+  const lenses = (info?.lensRatios ?? []).map(snap).filter((r) => r > 1.05 && r <= maxRatio);
+  const presets = [1, ...lenses];
+  const last = presets[presets.length - 1];
+  if (Math.floor(maxRatio) >= last * 2) presets.push(Math.floor(maxRatio));
+  return { maxRatio, presets };
+}
 
 /**
  * In-app camera. Photos go to private app storage (never the gallery).
@@ -36,6 +49,7 @@ export default function CameraScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const camera = useRef<CameraView>(null);
+  const { maxRatio, presets } = useMemo(readZoomOptions, []);
   const [guide, setGuide] = useState(true);
   const [ratio, setRatio] = useState(1);
   const startRatio = useRef(1);
@@ -46,7 +60,7 @@ export default function CameraScreen() {
       startRatio.current = ratio;
     })
     .onUpdate((e) => {
-      setRatio(Math.min(MAX_ZOOM_RATIO, Math.max(1, startRatio.current * e.scale)));
+      setRatio(Math.min(maxRatio, Math.max(1, startRatio.current * e.scale)));
     });
 
   const capture = async () => {
@@ -89,7 +103,7 @@ export default function CameraScreen() {
           <CameraView
             ref={camera}
             facing={facing}
-            zoom={(ratio - 1) / (MAX_ZOOM_RATIO - 1)}
+            zoom={Math.min(1, ratio / maxRatio)}
             style={{ flex: 1 }}
           />
         </View>
@@ -116,7 +130,7 @@ export default function CameraScreen() {
         style={{ paddingBottom: insets.bottom + 24 }}
       >
         <View className="flex-row gap-2 rounded-full bg-black/40 p-1">
-          {ZOOM_PRESETS.map((preset) => {
+          {presets.map((preset) => {
             const active = Math.abs(ratio - preset) < 0.05;
             return (
               <Pressable
@@ -124,9 +138,7 @@ export default function CameraScreen() {
                 onPress={() => setRatio(preset)}
                 className={`h-10 min-w-10 items-center justify-center rounded-full px-3 ${active ? 'bg-white' : ''}`}
               >
-                <Text className={active ? 'text-black' : 'text-white'}>
-                  {active ? `${preset}x` : preset === 1 ? '1x' : `${preset}`}
-                </Text>
+                <Text className={active ? 'text-black' : 'text-white'}>{`${preset}x`}</Text>
               </Pressable>
             );
           })}
