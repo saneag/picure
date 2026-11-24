@@ -1,10 +1,12 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Search } from 'lucide-react-native';
+import { Download, Pencil, Search, Trash2 } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Row, Section } from '@/components/ui/grouped-list';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -14,6 +16,7 @@ import { CollageCanvas } from '@/features/collage/CollageCanvas';
 import { useDraft } from '@/features/collage/draft-context';
 import type { SavedCollage } from '@/features/collage/types';
 import { removeCollage } from '@/services/collage-service';
+import { saveToGalleryAlbum } from '@/services/gallery';
 
 export default function CollagesScreen() {
   const { t, i18n } = useTranslation();
@@ -23,7 +26,9 @@ export default function CollagesScreen() {
   const { width } = useWindowDimensions();
   const [search, setSearch] = useState('');
   const [collages, setCollages] = useState<SavedCollage[]>([]);
-  const [draftToDelete, setDraftToDelete] = useState<SavedCollage | null>(null);
+  const [menuItem, setMenuItem] = useState<SavedCollage | null>(null);
+  const [toDelete, setToDelete] = useState<SavedCollage | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const cardWidth = (width - 32 - 12) / 2;
 
   const reload = useCallback(() => listCollages(db, search).then(setCollages), [db, search]);
@@ -32,6 +37,16 @@ export default function CollagesScreen() {
     if (!item.isDraft) return router.push(`/collage/${item.id}`);
     startFrom(item);
     router.push('/collage/editor');
+  };
+
+  const exportToGallery = async (item: SavedCollage) => {
+    try {
+      await saveToGalleryAlbum(item.renderedUri);
+      setNotice(t('detail.savedToGallery'));
+    } catch (error) {
+      const denied = error instanceof Error && error.message === 'gallery-permission-denied';
+      setNotice(denied ? t('save.galleryDenied') : t('save.failed'));
+    }
   };
 
   useFocusEffect(
@@ -75,7 +90,7 @@ export default function CollagesScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => open(item)}
-            onLongPress={item.isDraft ? () => setDraftToDelete(item) : undefined}
+            onLongPress={() => setMenuItem(item)}
             style={{ width: cardWidth }}
             className="overflow-hidden rounded-ios-lg bg-card active:opacity-70"
           >
@@ -113,10 +128,49 @@ export default function CollagesScreen() {
           </Pressable>
         )}
       />
+      <BottomSheet
+        visible={menuItem !== null}
+        title={menuItem?.patient.name || t('common.untitled')}
+        closeLabel={t('common.done')}
+        onClose={() => setMenuItem(null)}
+      >
+        <Section>
+          <Row
+            label={t('detail.edit')}
+            right={<Icon as={Pencil} size={18} />}
+            onPress={() => {
+              const item = menuItem;
+              setMenuItem(null);
+              if (item) open(item);
+            }}
+          />
+          {menuItem?.isDraft ? null : (
+            <Row
+              label={t('detail.saveToGallery')}
+              right={<Icon as={Download} size={18} />}
+              onPress={() => {
+                const item = menuItem;
+                setMenuItem(null);
+                if (item) exportToGallery(item);
+              }}
+            />
+          )}
+          <Row
+            label={t('detail.delete')}
+            destructive
+            right={<Icon as={Trash2} size={18} className="text-destructive" />}
+            onPress={() => {
+              const item = menuItem;
+              setMenuItem(null);
+              setToDelete(item);
+            }}
+          />
+        </Section>
+      </BottomSheet>
       <ConfirmDialog
-        open={draftToDelete !== null}
-        title={t('home.deleteDraftTitle')}
-        message={t('home.deleteDraftMessage')}
+        open={toDelete !== null}
+        title={toDelete?.isDraft ? t('home.deleteDraftTitle') : t('detail.deleteTitle')}
+        message={toDelete?.isDraft ? t('home.deleteDraftMessage') : t('detail.deleteMessage')}
         actions={[
           { label: t('common.cancel') },
           {
@@ -124,12 +178,18 @@ export default function CollagesScreen() {
             destructive: true,
             emphasized: true,
             onPress: async () => {
-              if (draftToDelete) await removeCollage(db, draftToDelete.id);
+              if (toDelete) await removeCollage(db, toDelete.id);
               reload();
             },
           },
         ]}
-        onClose={() => setDraftToDelete(null)}
+        onClose={() => setToDelete(null)}
+      />
+      <ConfirmDialog
+        open={notice !== null}
+        title={notice ?? ''}
+        actions={[{ label: t('common.ok'), emphasized: true }]}
+        onClose={() => setNotice(null)}
       />
     </View>
   );

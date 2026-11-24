@@ -79,9 +79,11 @@ export function ImageViewer({ uri, closeLabel, onClose }: ImageViewerProps) {
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <GestureHandlerRootView className="flex-1 bg-black">
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000' }}>
         <GestureDetector gesture={gesture}>
-          <Animated.View style={style} className="flex-1 items-center justify-center">
+          <Animated.View
+            style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }, style]}
+          >
             {uri ? <Image source={{ uri }} style={{ width, height }} resizeMode="contain" /> : null}
           </Animated.View>
         </GestureDetector>

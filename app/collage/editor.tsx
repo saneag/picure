@@ -1,13 +1,24 @@
 import { useNavigation, usePreventRemove, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Camera, Expand, Images, Tag, Trash2, type LucideIcon } from 'lucide-react-native';
+import {
+  Camera,
+  Expand,
+  Images,
+  LayoutGrid,
+  Save,
+  SlidersHorizontal,
+  Tag,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog, type DialogAction } from '@/components/ui/confirm-dialog';
 import { Icon } from '@/components/ui/icon';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Text } from '@/components/ui/text';
@@ -16,14 +27,18 @@ import { useDraft } from '@/features/collage/draft-context';
 import { ImageViewer } from '@/features/collage/ImageViewer';
 import { LabelSheet } from '@/features/collage/LabelSheet';
 import { LayoutPicker } from '@/features/collage/LayoutPicker';
-import { CANVAS_ASPECT, EXPORT_HEIGHT, EXPORT_WIDTH } from '@/features/collage/layouts';
+import {
+  CANVAS_ASPECT,
+  EXPORT_HEIGHT,
+  EXPORT_WIDTH,
+  getLayoutsForCount,
+} from '@/features/collage/layouts';
 import { SaveSheet, type SaveOptions } from '@/features/collage/SaveSheet';
 import type { SlotCount } from '@/features/collage/types';
 import { PatientForm } from '@/features/patients/PatientForm';
 import { saveAsDraft, saveDraft } from '@/services/collage-service';
 import { saveToGalleryAlbum } from '@/services/gallery';
 
-type Tab = 'collage' | 'details';
 interface DialogState {
   title: string;
   message?: string;
@@ -41,7 +56,8 @@ export default function EditorScreen() {
   const api = useDraft();
   const { draft } = api;
 
-  const [tab, setTab] = useState<Tab>('collage');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const [selected, setSelected] = useState<number>(0);
   const [area, setArea] = useState({ width: 0, height: 0 });
   const [labelOpen, setLabelOpen] = useState(false);
@@ -93,7 +109,7 @@ export default function EditorScreen() {
   const slot = Math.min(selected, count - 1);
   const image = draft.slots[slot];
   const hasAnyImage = draft.slots.some((s) => s !== null);
-  const canvasWidth = Math.max(0, Math.min(area.width - 32, area.height * CANVAS_ASPECT));
+  const canvasWidth = Math.max(0, Math.min(area.width, area.height * CANVAS_ASPECT));
 
   const changeCount = (next: SlotCount) => {
     const removed = draft.slots.slice(next).some((s) => s !== null);
@@ -181,104 +197,115 @@ export default function EditorScreen() {
     <View className="flex-1 bg-grouped">
       <ScreenHeader
         title={isSavedCollage ? t('editor.editTitle') : t('editor.newTitle')}
-        backLabel={t('common.back')}
+        backLabel=""
         right={
-          <Button
-            variant="plain"
-            size="compact"
-            label={t('common.save')}
-            disabled={!hasAnyImage || busy}
-            onPress={() => setSaveOpen(true)}
-          />
+          <>
+            {getLayoutsForCount(count).length > 1 ? (
+              <Button
+                variant="plain"
+                size="icon"
+                accessibilityLabel={t('editor.layout')}
+                onPress={() => setLayoutOpen(true)}
+              >
+                <Icon as={LayoutGrid} size={22} />
+              </Button>
+            ) : null}
+            <Button
+              variant="plain"
+              size="icon"
+              accessibilityLabel={t('editor.tabDetails')}
+              onPress={() => setDetailsOpen(true)}
+            >
+              <Icon as={SlidersHorizontal} size={22} />
+            </Button>
+            <Button
+              variant="plain"
+              size="icon"
+              accessibilityLabel={t('common.save')}
+              disabled={!hasAnyImage || busy}
+              onPress={() => setSaveOpen(true)}
+            >
+              <Icon as={Save} size={22} />
+            </Button>
+          </>
         }
       />
 
-      <View className="px-4 pb-2">
-        <SegmentedControl<Tab>
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'collage', label: t('editor.tabCollage') },
-            { value: 'details', label: t('editor.tabDetails') },
-          ]}
-        />
+      <View className="flex-1">
+        <View
+          className="flex-1 items-center justify-center"
+          onLayout={(e) => setArea(e.nativeEvent.layout)}
+        >
+          {canvasWidth > 0 ? (
+            <View className="overflow-hidden">
+              <CollageCanvas
+                layoutId={draft.layoutId}
+                slots={draft.slots}
+                ratios={draft.ratios}
+                width={canvasWidth}
+                interactive
+                selectedSlot={slot}
+                addLabel={t('editor.addPhoto')}
+                missingLabel={t('editor.missingImage')}
+                onSelect={setSelected}
+                onRatioChange={api.setRatio}
+                onTransformEnd={(index, transform) => api.updateImage(index, transform)}
+              />
+            </View>
+          ) : null}
+        </View>
+
+        <View className="flex-row justify-around px-2 pb-6 pt-2">
+          <ToolButton
+            icon={Images}
+            label={image ? t('editor.replace') : t('editor.fromGallery')}
+            onPress={openGallery}
+          />
+          <ToolButton icon={Camera} label={t('editor.fromCamera')} onPress={openCamera} />
+          {image ? (
+            <>
+              <ToolButton icon={Tag} label={t('editor.label')} onPress={() => setLabelOpen(true)} />
+              <ToolButton
+                icon={Expand}
+                label={t('editor.expand')}
+                onPress={() => setViewerUri(image.uri)}
+              />
+              <ToolButton
+                icon={Trash2}
+                label={t('editor.removePhoto')}
+                destructive
+                onPress={() => api.clearSlot(slot)}
+              />
+            </>
+          ) : null}
+        </View>
       </View>
 
-      {tab === 'collage' ? (
-        <View className="flex-1">
-          <View className="flex-row items-center justify-between gap-4 px-4 pb-2">
-            <Text variant="subhead">{t('editor.images')}</Text>
-            <SegmentedControl<number>
-              className="w-44"
-              value={count}
-              onChange={(value) => changeCount(value as SlotCount)}
-              options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
-            />
-          </View>
-
-          <View
-            className="flex-1 items-center justify-center"
-            onLayout={(e) => setArea(e.nativeEvent.layout)}
-          >
-            {canvasWidth > 0 ? (
-              <View className="overflow-hidden rounded-[10px] shadow-lg">
-                <CollageCanvas
-                  layoutId={draft.layoutId}
-                  slots={draft.slots}
-                  ratios={draft.ratios}
-                  width={canvasWidth}
-                  interactive
-                  selectedSlot={slot}
-                  addLabel={t('editor.addPhoto')}
-                  missingLabel={t('editor.missingImage')}
-                  onSelect={setSelected}
-                  onRatioChange={api.setRatio}
-                  onTransformEnd={(index, transform) => api.updateImage(index, transform)}
-                />
-              </View>
-            ) : null}
-          </View>
-
-          <Text variant="footnote" className="px-6 py-1 text-center">
-            {hasAnyImage ? t('editor.hint') : t('editor.emptyHint')}
-          </Text>
-
-          <LayoutPicker count={count} value={draft.layoutId} onChange={api.setLayout} />
-
-          <View className="flex-row justify-around px-2 pb-6 pt-2">
-            <ToolButton
-              icon={Images}
-              label={image ? t('editor.replace') : t('editor.fromGallery')}
-              onPress={openGallery}
-            />
-            <ToolButton icon={Camera} label={t('editor.fromCamera')} onPress={openCamera} />
-            {image ? (
-              <>
-                <ToolButton
-                  icon={Tag}
-                  label={t('editor.label')}
-                  onPress={() => setLabelOpen(true)}
-                />
-                <ToolButton
-                  icon={Expand}
-                  label={t('editor.expand')}
-                  onPress={() => setViewerUri(image.uri)}
-                />
-                <ToolButton
-                  icon={Trash2}
-                  label={t('editor.removePhoto')}
-                  destructive
-                  onPress={() => api.clearSlot(slot)}
-                />
-              </>
-            ) : null}
-          </View>
+      <BottomSheet
+        visible={layoutOpen}
+        title={t('editor.layout')}
+        closeLabel={t('common.done')}
+        onClose={() => setLayoutOpen(false)}
+      >
+        <LayoutPicker count={count} value={draft.layoutId} onChange={api.setLayout} />
+      </BottomSheet>
+      <BottomSheet
+        visible={detailsOpen}
+        title={t('editor.tabDetails')}
+        closeLabel={t('common.done')}
+        onClose={() => setDetailsOpen(false)}
+      >
+        <View className="mb-4 flex-row items-center justify-between gap-4">
+          <Text variant="subhead">{t('editor.images')}</Text>
+          <SegmentedControl<number>
+            className="w-44"
+            value={count}
+            onChange={(value) => changeCount(value as SlotCount)}
+            options={[1, 2, 3, 4].map((n) => ({ value: n, label: String(n) }))}
+          />
         </View>
-      ) : (
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-4 pb-10 pt-2">
-          <PatientForm value={draft.patient} onChange={api.setPatient} />
-        </ScrollView>
-      )}
+        <PatientForm value={draft.patient} onChange={api.setPatient} />
+      </BottomSheet>
 
       {/* Rendered off-screen at a fixed size so the saved picture never depends on the phone's layout. */}
       <View pointerEvents="none" style={{ position: 'absolute', left: -10000, top: 0 }}>

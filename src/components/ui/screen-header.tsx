@@ -30,10 +30,11 @@ export function ScreenHeader({ title, large, backLabel, onBack, right }: ScreenH
               variant="plain"
               size="compact"
               className="-ml-3 px-1"
+              accessibilityLabel={backLabel || undefined}
               onPress={onBack ?? (() => router.back())}
             >
               <Icon as={ChevronLeft} size={28} />
-              <Text className="-ml-1 text-primary">{backLabel}</Text>
+              {backLabel ? <Text className="-ml-1 text-primary">{backLabel}</Text> : null}
             </Button>
           ) : null}
         </View>

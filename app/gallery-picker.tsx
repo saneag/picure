@@ -21,6 +21,11 @@ const COLUMNS = 3;
  * In-app gallery grid. It lists photos straight from the phone's media library and stores only
  * their id and uri, so the photos are referenced and never copied.
  */
+function uniqueById(photos: GalleryPhoto[]) {
+  const seen = new Set<string>();
+  return photos.filter((p) => !seen.has(p.id) && !!seen.add(p.id));
+}
+
 export default function GalleryPickerScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -48,8 +53,7 @@ export default function GalleryPickerScreen() {
     try {
       const page = await loadGalleryPage(cursor);
       setPhotos((current) => {
-        const known = new Set(current.map((p) => p.id));
-        return [...current, ...page.photos.filter((p) => !known.has(p.id))];
+        return uniqueById([...current, ...page.photos]);
       });
       setCursor(page.endCursor);
       setHasMore(page.hasNextPage);
@@ -64,7 +68,7 @@ export default function GalleryPickerScreen() {
     loading.current = true;
     try {
       const page = await loadGalleryPage();
-      setPhotos(page.photos);
+      setPhotos(uniqueById(page.photos));
       setCursor(page.endCursor);
       setHasMore(page.hasNextPage);
     } finally {

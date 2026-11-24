@@ -50,7 +50,7 @@ export function CollageCanvas({
   // While dragging, only this canvas re-renders; the draft is updated once when the drag ends.
   const [live, setLive] = useState<number[] | null>(null);
   const activeRatios = live ?? resolveRatios(layout, ratios);
-  const cells = computeCells(layout, width, height, width * 0.008, activeRatios);
+  const cells = computeCells(layout, width, height, 0, activeRatios);
   const { splits } = computeLayout(layout.tree, activeRatios);
 
   return (
