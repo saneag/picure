@@ -225,12 +225,14 @@ export default function EditorScreen() {
                 <CollageCanvas
                   layoutId={draft.layoutId}
                   slots={draft.slots}
+                  ratios={draft.ratios}
                   width={canvasWidth}
                   interactive
                   selectedSlot={slot}
                   addLabel={t('editor.addPhoto')}
                   missingLabel={t('editor.missingImage')}
                   onSelect={setSelected}
+                  onRatioChange={api.setRatio}
                   onTransformEnd={(index, transform) => api.updateImage(index, transform)}
                 />
               </View>
@@ -284,6 +286,7 @@ export default function EditorScreen() {
           <CollageCanvas
             layoutId={draft.layoutId}
             slots={draft.slots}
+            ratios={draft.ratios}
             width={EXPORT_LAYOUT_WIDTH}
           />
         </View>

@@ -5,6 +5,7 @@ import {
   getLayout,
   getLayoutsForCount,
   LAYOUTS,
+  resolveRatios,
 } from './layouts';
 
 describe('layouts', () => {
@@ -37,6 +38,26 @@ describe('layouts', () => {
     expect(left.width).toBe(45);
     expect(right.x).toBe(55);
     expect(right.x + right.width).toBe(100);
+  });
+});
+
+describe('resizable cells', () => {
+  it('gives the first cell more room when its divider moves', () => {
+    const layout = getLayout('duo-side', 2);
+    const [left, right] = computeCells(layout, 100, 100, 0, [0.7]);
+    expect(left.width).toBeCloseTo(70);
+    expect(right.x).toBeCloseTo(70);
+  });
+
+  it('uses default ratios when saved ones do not fit the layout', () => {
+    const layout = getLayout('quad-grid', 4);
+    expect(resolveRatios(layout, [])).toEqual(layout.ratios);
+    expect(resolveRatios(layout, [0.3, 0.4, 0.5])).toEqual([0.3, 0.4, 0.5]);
+  });
+
+  it('offers four images in one column', () => {
+    const cells = getLayout('quad-column', 4).cells;
+    expect(cells.every((c) => c.width === 1 && Math.abs(c.height - 0.25) < 1e-9)).toBe(true);
   });
 });
 

@@ -9,6 +9,7 @@ interface CollageRow {
   description: string;
   procedure_count: number;
   layout_id: string;
+  ratios: string;
   slot_count: number;
   rendered_uri: string;
   is_draft: number;
@@ -54,6 +55,15 @@ function toImage(row: ImageRow): CollageImage {
   };
 }
 
+function parseRatios(json: string): number[] {
+  try {
+    const value: unknown = JSON.parse(json);
+    return Array.isArray(value) ? value.filter((n): n is number => typeof n === 'number') : [];
+  } catch {
+    return [];
+  }
+}
+
 function toCollage(row: CollageRow, images: ImageRow[]): SavedCollage {
   const slots: (CollageImage | null)[] = Array.from({ length: row.slot_count }, () => null);
   for (const image of images) slots[image.slot_index] = toImage(image);
@@ -67,6 +77,7 @@ function toCollage(row: CollageRow, images: ImageRow[]): SavedCollage {
       procedureCount: row.procedure_count,
     },
     layoutId: row.layout_id,
+    ratios: parseRatios(row.ratios),
     slots,
     isDraft: row.is_draft === 1,
     renderedUri: row.rendered_uri,
@@ -105,9 +116,9 @@ export async function saveCollage(db: SQLiteDatabase, collage: SavedCollage): Pr
   await db.withTransactionAsync(async () => {
     await db.runAsync(
       `INSERT OR REPLACE INTO collages
-        (id, patient_name, email, phone, description, procedure_count, layout_id, slot_count,
+        (id, patient_name, email, phone, description, procedure_count, layout_id, ratios, slot_count,
          rendered_uri, is_draft, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       collage.id,
       collage.patient.name,
       collage.patient.email,
@@ -115,6 +126,7 @@ export async function saveCollage(db: SQLiteDatabase, collage: SavedCollage): Pr
       collage.patient.description,
       collage.patient.procedureCount,
       collage.layoutId,
+      JSON.stringify(collage.ratios),
       collage.slots.length,
       collage.renderedUri,
       collage.isDraft ? 1 : 0,

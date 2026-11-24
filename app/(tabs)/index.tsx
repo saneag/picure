@@ -81,7 +81,12 @@ export default function CollagesScreen() {
           >
             {item.isDraft ? (
               <View pointerEvents="none">
-                <CollageCanvas layoutId={item.layoutId} slots={item.slots} width={cardWidth} />
+                <CollageCanvas
+                  layoutId={item.layoutId}
+                  ratios={item.ratios}
+                  slots={item.slots}
+                  width={cardWidth}
+                />
                 <View className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5">
                   <Text variant="footnote" className="text-primary-foreground">
                     {t('home.draft')}

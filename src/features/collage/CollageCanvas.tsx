@@ -1,17 +1,30 @@
+import { useRef } from 'react';
 import { View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { CollageCell } from './CollageCell';
-import { CANVAS_ASPECT, computeCells, getLayout } from './layouts';
+import {
+  CANVAS_ASPECT,
+  computeCells,
+  computeLayout,
+  getLayout,
+  MAX_RATIO,
+  MIN_RATIO,
+  resolveRatios,
+  type Split,
+} from './layouts';
 import type { CollageImage, SlotCount } from './types';
 
 interface CollageCanvasProps {
   layoutId: string;
   slots: (CollageImage | null)[];
+  ratios?: number[];
   width: number;
   interactive?: boolean;
   selectedSlot?: number | null;
   addLabel?: string;
   missingLabel?: string;
   onSelect?: (slot: number) => void;
+  onRatioChange?: (index: number, ratio: number) => void;
   onTransformEnd?: (
     slot: number,
     transform: { scale: number; offsetX: number; offsetY: number },
@@ -22,17 +35,20 @@ interface CollageCanvasProps {
 export function CollageCanvas({
   layoutId,
   slots,
+  ratios,
   width,
   interactive = false,
   selectedSlot = null,
   addLabel,
   missingLabel,
   onSelect,
+  onRatioChange,
   onTransformEnd,
 }: CollageCanvasProps) {
   const height = width / CANVAS_ASPECT;
   const layout = getLayout(layoutId, slots.length as SlotCount);
-  const cells = computeCells(layout, width, height, width * 0.008);
+  const cells = computeCells(layout, width, height, width * 0.008, ratios);
+  const { splits } = computeLayout(layout.tree, resolveRatios(layout, ratios));
 
   return (
     <View style={{ width, height }} className="overflow-hidden bg-white" collapsable={false}>
@@ -50,6 +66,70 @@ export function CollageCanvas({
           onTransformEnd={(transform) => onTransformEnd?.(index, transform)}
         />
       ))}
+      {interactive && onRatioChange
+        ? splits.map((split, index) => (
+            <SplitHandle
+              key={`split-${index}`}
+              split={split}
+              width={width}
+              height={height}
+              onChange={(ratio) => onRatioChange(index, ratio)}
+            />
+          ))
+        : null}
     </View>
+  );
+}
+
+const HANDLE_THICKNESS = 36;
+
+/** Draggable divider between two parts of the layout. */
+function SplitHandle({
+  split,
+  width,
+  height,
+  onChange,
+}: {
+  split: Split;
+  width: number;
+  height: number;
+  onChange: (ratio: number) => void;
+}) {
+  const startRatio = useRef(split.ratio);
+  const horizontal = split.dir === 'row';
+  const areaSize = (horizontal ? split.rect.width * width : split.rect.height * height) || 1;
+
+  const pan = Gesture.Pan()
+    .runOnJS(true)
+    .onStart(() => {
+      startRatio.current = split.ratio;
+    })
+    .onUpdate((e) => {
+      const delta = (horizontal ? e.translationX : e.translationY) / areaSize;
+      onChange(Math.min(MAX_RATIO, Math.max(MIN_RATIO, startRatio.current + delta)));
+    });
+
+  const position = horizontal
+    ? {
+        left: (split.rect.x + split.rect.width * split.ratio) * width - HANDLE_THICKNESS / 2,
+        top: split.rect.y * height,
+        width: HANDLE_THICKNESS,
+        height: split.rect.height * height,
+      }
+    : {
+        left: split.rect.x * width,
+        top: (split.rect.y + split.rect.height * split.ratio) * height - HANDLE_THICKNESS / 2,
+        width: split.rect.width * width,
+        height: HANDLE_THICKNESS,
+      };
+
+  return (
+    <GestureDetector gesture={pan}>
+      <View style={position} className="absolute items-center justify-center">
+        <View
+          className={`rounded-full bg-white/90 shadow ${horizontal ? 'h-10 w-1.5' : 'h-1.5 w-10'}`}
+        />
+      </View>
+    </GestureDetector>
   );
 }

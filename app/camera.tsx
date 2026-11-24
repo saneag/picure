@@ -1,9 +1,10 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { RotateCcw } from 'lucide-react-native';
+import { ChevronLeft, RotateCcw } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -12,6 +13,10 @@ import { Text } from '@/components/ui/text';
 import { useDraft } from '@/features/collage/draft-context';
 import { newId } from '@/lib/id';
 import { storeCameraPhoto } from '@/services/file-storage';
+
+// expo-camera maps zoom 0..1 onto 1x..maxRatio; most phones top out around 10x.
+const MAX_ZOOM_RATIO = 10;
+const ZOOM_PRESETS = [1, 3, 10];
 
 /**
  * In-app camera. Photos go to private app storage (never the gallery).
@@ -30,6 +35,17 @@ export default function CameraScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const camera = useRef<CameraView>(null);
+  const [ratio, setRatio] = useState(1);
+  const startRatio = useRef(1);
+
+  const pinch = Gesture.Pinch()
+    .runOnJS(true)
+    .onStart(() => {
+      startRatio.current = ratio;
+    })
+    .onUpdate((e) => {
+      setRatio(Math.min(MAX_ZOOM_RATIO, Math.max(1, startRatio.current * e.scale)));
+    });
 
   const capture = async () => {
     if (busy || !camera.current) return;
@@ -66,32 +82,63 @@ export default function CameraScreen() {
 
   return (
     <View className="flex-1 bg-black">
-      <CameraView ref={camera} facing={facing} style={{ flex: 1 }} />
+      <GestureDetector gesture={pinch}>
+        <View className="flex-1">
+          <CameraView
+            ref={camera}
+            facing={facing}
+            zoom={(ratio - 1) / (MAX_ZOOM_RATIO - 1)}
+            style={{ flex: 1 }}
+          />
+        </View>
+      </GestureDetector>
+      <Pressable
+        accessibilityLabel={t('camera.cancel')}
+        onPress={() => router.back()}
+        className="absolute left-4 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+        style={{ top: insets.top + 8 }}
+      >
+        <Icon as={ChevronLeft} className="text-white" size={28} />
+      </Pressable>
       <View
-        className="absolute inset-x-0 bottom-0 flex-row items-center justify-between px-8"
+        className="absolute inset-x-0 bottom-0 items-center gap-5"
         style={{ paddingBottom: insets.bottom + 24 }}
       >
-        <Button
-          variant="plain"
-          label={t('camera.cancel')}
-          labelClassName="text-white"
-          onPress={() => router.back()}
-        />
-        <Button
-          accessibilityLabel={t('camera.take')}
-          disabled={busy}
-          onPress={capture}
-          className="h-[76px] w-[76px] rounded-full border-4 border-white/60 bg-white active:bg-white/70"
-        />
-        <Button
-          variant="gray"
-          size="icon"
-          accessibilityLabel="flip"
-          className="bg-white/25"
-          onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
-        >
-          <Icon as={RotateCcw} className="text-white" />
-        </Button>
+        <View className="flex-row gap-2 rounded-full bg-black/40 p-1">
+          {ZOOM_PRESETS.map((preset) => {
+            const active = Math.abs(ratio - preset) < 0.05;
+            return (
+              <Pressable
+                key={preset}
+                onPress={() => setRatio(preset)}
+                className={`h-10 min-w-10 items-center justify-center rounded-full px-3 ${active ? 'bg-white' : ''}`}
+              >
+                <Text className={active ? 'text-black' : 'text-white'}>
+                  {active ? `${preset}x` : preset === 1 ? '1x' : `${preset}`}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <View className="w-full flex-row items-center justify-center">
+          <Pressable
+            accessibilityLabel={t('camera.take')}
+            disabled={busy}
+            onPress={capture}
+            className="h-20 w-20 items-center justify-center rounded-full border-4 border-white"
+          >
+            <View className="h-[62px] w-[62px] rounded-full bg-white" />
+          </Pressable>
+          <Button
+            variant="gray"
+            size="icon"
+            accessibilityLabel="flip"
+            className="absolute right-8 bg-white/25"
+            onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
+          >
+            <Icon as={RotateCcw} className="text-white" />
+          </Button>
+        </View>
       </View>
       <ConfirmDialog
         open={error !== null}

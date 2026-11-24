@@ -47,6 +47,8 @@ export interface CollageDraft {
   isDraft: boolean;
   patient: PatientInfo;
   layoutId: string;
+  /** Divider positions of the layout (see `Split`); the layout's defaults when not resized. */
+  ratios: number[];
   /** One entry per slot; null means the slot is still empty. */
   slots: (CollageImage | null)[];
 }
@@ -55,6 +57,7 @@ export interface SavedCollage {
   id: string;
   patient: PatientInfo;
   layoutId: string;
+  ratios: number[];
   slots: (CollageImage | null)[];
   /** Unfinished collage saved from the editor; it has no rendered image yet. */
   isDraft: boolean;

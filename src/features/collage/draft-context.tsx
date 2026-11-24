@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { newId } from '@/lib/id';
-import { getDefaultLayoutId, getLayout } from './layouts';
+import { getDefaultLayoutId, getLayout, MAX_RATIO, MIN_RATIO, resolveRatios } from './layouts';
 import {
   DEFAULT_LABEL,
   EMPTY_PATIENT,
@@ -38,7 +38,24 @@ function blankDraft(): CollageDraft {
     isDraft: false,
     patient: { ...EMPTY_PATIENT },
     layoutId: getDefaultLayoutId(DEFAULT_SLOT_COUNT),
+    ratios: getLayout(getDefaultLayoutId(DEFAULT_SLOT_COUNT), DEFAULT_SLOT_COUNT).ratios,
     slots: Array.from({ length: DEFAULT_SLOT_COUNT }, () => null),
+  };
+}
+
+/** Switching layout resets the divider positions to that layout's defaults. */
+function withLayout(
+  current: CollageDraft,
+  slots: (CollageImage | null)[],
+  layoutId: string,
+): CollageDraft {
+  const changed = layoutId !== current.layoutId || slots.length !== current.slots.length;
+  const layout = getLayout(layoutId, slots.length as SlotCount);
+  return {
+    ...current,
+    slots,
+    layoutId: layout.id,
+    ratios: changed ? layout.ratios : current.ratios,
   };
 }
 
@@ -62,6 +79,7 @@ interface DraftContextValue {
    * Without: fills empty slots in order, adding slots (up to 4) when needed.
    * Returns how many images were placed.
    */
+  setRatio: (index: number, ratio: number) => void;
   placeImages: (images: NewImage[], slot?: number) => number;
   clearSlot: (slot: number) => void;
   updateImage: (
@@ -101,6 +119,10 @@ export function DraftProvider({ children }: { children: ReactNode }) {
           isDraft: saved.isDraft,
           patient: saved.patient,
           layoutId: saved.layoutId,
+          ratios: resolveRatios(
+            getLayout(saved.layoutId, saved.slots.length as SlotCount),
+            saved.ratios,
+          ),
           slots: saved.slots,
         }),
       clear: () => setDraft(null),
@@ -111,10 +133,17 @@ export function DraftProvider({ children }: { children: ReactNode }) {
       setSlotCount: (count) =>
         update((current) => {
           const slots = Array.from({ length: count }, (_, i) => current.slots[i] ?? null);
-          return { ...current, slots, layoutId: getLayout(current.layoutId, count).id };
+          return withLayout(current, slots, getLayout(current.layoutId, count).id);
         }),
 
-      setLayout: (layoutId) => update((current) => ({ ...current, layoutId })),
+      setLayout: (layoutId) => update((current) => withLayout(current, current.slots, layoutId)),
+      setRatio: (index, ratio) =>
+        update((current) => ({
+          ...current,
+          ratios: current.ratios.map((r, i) =>
+            i === index ? Math.min(MAX_RATIO, Math.max(MIN_RATIO, ratio)) : r,
+          ),
+        })),
       setPatient: (patient) => update((current) => ({ ...current, patient })),
 
       placeImages: (images, slot) => {
@@ -137,7 +166,7 @@ export function DraftProvider({ children }: { children: ReactNode }) {
           }
         }
         const layoutId = getLayout(draft.layoutId, slots.length as SlotCount).id;
-        setDraft({ ...draft, slots, layoutId });
+        setDraft(withLayout(draft, slots, layoutId));
         return placed;
       },
 
