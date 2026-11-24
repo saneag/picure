@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, RotateCcw } from 'lucide-react-native';
+import { ChevronLeft, PersonStanding, RotateCcw } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { SilhouetteGuide } from '@/features/camera/SilhouetteGuide';
 import { useDraft } from '@/features/collage/draft-context';
 import { newId } from '@/lib/id';
 import { storeCameraPhoto } from '@/services/file-storage';
@@ -35,6 +36,7 @@ export default function CameraScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const camera = useRef<CameraView>(null);
+  const [guide, setGuide] = useState(true);
   const [ratio, setRatio] = useState(1);
   const startRatio = useRef(1);
 
@@ -92,6 +94,7 @@ export default function CameraScreen() {
           />
         </View>
       </GestureDetector>
+      {guide ? <SilhouetteGuide /> : null}
       <Pressable
         accessibilityLabel={t('camera.cancel')}
         onPress={() => router.back()}
@@ -99,6 +102,14 @@ export default function CameraScreen() {
         style={{ top: insets.top + 8 }}
       >
         <Icon as={ChevronLeft} className="text-white" size={28} />
+      </Pressable>
+      <Pressable
+        accessibilityLabel={t('camera.guide')}
+        onPress={() => setGuide((on) => !on)}
+        className="absolute right-4 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+        style={{ top: insets.top + 8 }}
+      >
+        <Icon as={PersonStanding} className={guide ? 'text-primary' : 'text-white'} size={26} />
       </Pressable>
       <View
         className="absolute inset-x-0 bottom-0 items-center gap-5"

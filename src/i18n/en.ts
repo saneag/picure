@@ -134,6 +134,7 @@ export const en = {
     denied: 'Picure needs camera access to take photos.',
     grant: 'Allow camera',
     take: 'Take photo',
+    guide: 'Pose guide',
     cancel: 'Cancel',
     failed: 'Could not take the photo.',
   },
