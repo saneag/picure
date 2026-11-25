@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Row, Section } from '@/components/ui/grouped-list';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -14,6 +15,7 @@ import { useSettings } from '@/features/settings/settings-context';
 import { exportBackup } from '@/services/backup';
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const db = useSQLiteContext();
   const { settings, setLanguage, setTheme, setAppLock } = useSettings();
@@ -39,7 +41,10 @@ export default function SettingsScreen() {
   return (
     <View className="flex-1 bg-grouped">
       <ScreenHeader large title={t('settings.title')} />
-      <ScrollView contentContainerClassName="px-4 pb-32 pt-2">
+      <ScrollView
+        contentContainerClassName="px-4 pt-2"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
+      >
         <Section title={t('settings.language')}>
           <View className="p-2">
             <SegmentedControl<LanguageSetting>

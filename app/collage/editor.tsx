@@ -16,6 +16,7 @@ import {
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog, type DialogAction } from '@/components/ui/confirm-dialog';
@@ -55,6 +56,7 @@ interface DialogState {
 const EXPORT_LAYOUT_WIDTH = EXPORT_WIDTH / 2;
 
 export default function EditorScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
@@ -291,7 +293,10 @@ export default function EditorScreen() {
           ) : null}
         </View>
 
-        <View className="flex-row justify-around px-2 pb-6 pt-2">
+        <View
+          className="flex-row justify-around px-2 pt-2"
+          style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+        >
           <ToolButton
             icon={Images}
             label={image ? t('editor.replace') : t('editor.fromGallery')}

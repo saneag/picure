@@ -3,6 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Check, CheckSquare, Download, Pencil, Search, Trash2, X } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackHandler, FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ export default function CollagesScreen() {
   const router = useRouter();
   const { startFrom } = useDraft();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [collages, setCollages] = useState<SavedCollage[]>([]);
   const [menuItem, setMenuItem] = useState<SavedCollage | null>(null);
@@ -109,7 +111,8 @@ export default function CollagesScreen() {
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperClassName="gap-3 px-4"
-        contentContainerClassName="gap-3 pb-28"
+        contentContainerClassName="gap-3"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
         ListHeaderComponent={
           <View className="mx-4 mb-2 h-10 flex-row items-center gap-2 rounded-[10px] bg-secondary px-3">
             <Icon as={Search} size={18} className="text-muted-foreground" />

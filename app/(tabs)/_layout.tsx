@@ -3,6 +3,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { Camera, Images, PlusCircle, Settings } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
 import { useDraft } from '@/features/collage/draft-context';
 
@@ -11,6 +12,7 @@ export default function TabsLayout() {
   const { colorScheme } = useColorScheme();
   const router = useRouter();
   const { startNew } = useDraft();
+  const insets = useSafeAreaInsets();
 
   const createNew = () => {
     startNew();
@@ -28,9 +30,9 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
           position: 'absolute',
-          height: 84,
+          height: 60 + insets.bottom,
           paddingTop: 8,
-          paddingBottom: 24,
+          paddingBottom: insets.bottom + 4,
           borderTopWidth: StyleSheet.hairlineWidth,
           backgroundColor: 'transparent',
           elevation: 0,

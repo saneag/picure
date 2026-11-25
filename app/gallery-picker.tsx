@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppState, FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
@@ -27,6 +28,7 @@ function uniqueById(photos: GalleryPhoto[]) {
 }
 
 export default function GalleryPickerScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -145,6 +147,7 @@ export default function GalleryPickerScreen() {
         <FlatList
           data={photos}
           numColumns={COLUMNS}
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
           keyExtractor={(item) => item.id}
           onEndReached={loadMore}
           onEndReachedThreshold={0.6}

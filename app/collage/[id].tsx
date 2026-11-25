@@ -4,6 +4,7 @@ import { Download, Pencil, Trash2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Image, Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog, type DialogAction } from '@/components/ui/confirm-dialog';
 import { Icon } from '@/components/ui/icon';
@@ -24,6 +25,7 @@ interface DialogState {
 }
 
 export default function CollageDetailScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const db = useSQLiteContext();
@@ -101,7 +103,10 @@ export default function CollageDetailScreen() {
           </Button>
         }
       />
-      <ScrollView contentContainerClassName="px-4 pb-10 pt-2">
+      <ScrollView
+        contentContainerClassName="px-4 pt-2"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+      >
         <Pressable
           accessibilityRole="imagebutton"
           onPress={() => setViewer(true)}
