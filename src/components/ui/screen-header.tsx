@@ -13,10 +13,12 @@ interface ScreenHeaderProps {
   large?: boolean;
   backLabel?: string;
   onBack?: () => void;
+  /** Replaces the back button in the left slot. */
+  left?: ReactNode;
   right?: ReactNode;
 }
 
-export function ScreenHeader({ title, large, backLabel, onBack, right }: ScreenHeaderProps) {
+export function ScreenHeader({ title, large, backLabel, onBack, left, right }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const showBack = backLabel !== undefined;
@@ -25,7 +27,8 @@ export function ScreenHeader({ title, large, backLabel, onBack, right }: ScreenH
     <View className="bg-grouped px-4 pb-2" style={{ paddingTop: insets.top + 4 }}>
       <View className="h-11 flex-row items-center justify-between">
         <View className="min-w-[80px] flex-row">
-          {showBack ? (
+          {left ?? null}
+          {!left && showBack ? (
             <Button
               variant="plain"
               size="compact"

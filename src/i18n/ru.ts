@@ -23,6 +23,13 @@ export const ru: Translation = {
     camera: 'Сделать фото',
     procedures: 'Процедур: {{count}}',
     draft: 'Черновик',
+    saved: 'Сохранён',
+    select: 'Выбрать',
+    selectedCount: 'Выбрано: {{count}}',
+    deleteManyTitle: 'Удалить коллажи ({{count}})?',
+    deleteManyMessage:
+      'Выбранные коллажи и данные пациентов будут удалены из Picure. Фото в галерее не затрагиваются.',
+    cancelSelection: 'Отменить выбор',
     deleteDraftTitle: 'Удалить черновик?',
     deleteDraftMessage: 'Незавершённый коллаж будет удалён из Picure.',
   },

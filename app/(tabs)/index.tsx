@@ -1,10 +1,11 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Download, Pencil, Search, Trash2 } from 'lucide-react-native';
-import { useCallback, useState } from 'react';
+import { Check, CheckSquare, Download, Pencil, Search, Trash2, X } from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
+import { BackHandler, FlatList, Image, Pressable, useWindowDimensions, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
+import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Row, Section } from '@/components/ui/grouped-list';
 import { Icon } from '@/components/ui/icon';
@@ -28,10 +29,27 @@ export default function CollagesScreen() {
   const [collages, setCollages] = useState<SavedCollage[]>([]);
   const [menuItem, setMenuItem] = useState<SavedCollage | null>(null);
   const [toDelete, setToDelete] = useState<SavedCollage | null>(null);
+  const [selected, setSelected] = useState<string[] | null>(null);
+  const [confirmMany, setConfirmMany] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const cardWidth = (width - 32 - 12) / 2;
 
   const reload = useCallback(() => listCollages(db, search).then(setCollages), [db, search]);
+
+  const toggle = (id: string) =>
+    setSelected((current) => {
+      if (!current) return current;
+      return current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+    });
+
+  useEffect(() => {
+    if (!selected) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setSelected(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [selected !== null]);
 
   const open = (item: SavedCollage) => {
     if (!item.isDraft) return router.push(`/collage/${item.id}`);
@@ -57,7 +75,35 @@ export default function CollagesScreen() {
 
   return (
     <View className="flex-1 bg-grouped">
-      <ScreenHeader large title={t('home.title')} />
+      {selected ? (
+        <ScreenHeader
+          title={t('home.selectedCount', { count: selected.length })}
+          left={
+            <Button
+              variant="plain"
+              size="compact"
+              className="-ml-3 px-1"
+              accessibilityLabel={t('home.cancelSelection')}
+              onPress={() => setSelected(null)}
+            >
+              <Icon as={X} size={26} />
+            </Button>
+          }
+          right={
+            <Button
+              variant="plain"
+              size="compact"
+              disabled={selected.length === 0}
+              accessibilityLabel={t('common.delete')}
+              onPress={() => setConfirmMany(true)}
+            >
+              <Icon as={Trash2} size={22} className="text-destructive" />
+            </Button>
+          }
+        />
+      ) : (
+        <ScreenHeader large title={t('home.title')} />
+      )}
       <FlatList
         data={collages}
         keyExtractor={(item) => item.id}
@@ -86,48 +132,61 @@ export default function CollagesScreen() {
             )}
           </View>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => open(item)}
-            onLongPress={() => setMenuItem(item)}
-            style={{ width: cardWidth }}
-            className="overflow-hidden rounded-ios-lg bg-card active:opacity-70"
-          >
-            {item.isDraft ? (
-              <View pointerEvents="none">
-                <CollageCanvas
-                  layoutId={item.layoutId}
-                  ratios={item.ratios}
-                  showMargins={item.showMargins}
-                  slots={item.slots}
-                  width={cardWidth}
-                />
-                <View className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5">
-                  <Text variant="footnote" className="text-primary-foreground">
-                    {t('home.draft')}
-                  </Text>
+        extraData={selected}
+        renderItem={({ item }) => {
+          const isSelected = selected?.includes(item.id) ?? false;
+          return (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => (selected ? toggle(item.id) : open(item))}
+              onLongPress={() => !selected && setMenuItem(item)}
+              style={{ width: cardWidth }}
+              className={`overflow-hidden rounded-ios-lg bg-card active:opacity-70 ${isSelected ? 'border-2 border-primary' : 'border-2 border-transparent'}`}
+            >
+              {item.isDraft ? (
+                <View pointerEvents="none">
+                  <CollageCanvas
+                    layoutId={item.layoutId}
+                    ratios={item.ratios}
+                    showMargins={item.showMargins}
+                    slots={item.slots}
+                    width={cardWidth}
+                  />
                 </View>
+              ) : (
+                <Image
+                  source={{ uri: item.renderedUri }}
+                  className="aspect-[4/5] w-full bg-secondary"
+                />
+              )}
+              <View
+                className={`absolute left-2 top-2 rounded-full px-2 py-0.5 ${item.isDraft ? 'bg-primary' : 'bg-black/60'}`}
+              >
+                <Text variant="footnote" className="text-white">
+                  {item.isDraft ? t('home.draft') : t('home.saved')}
+                </Text>
               </View>
-            ) : (
-              <Image
-                source={{ uri: item.renderedUri }}
-                className="aspect-[4/5] w-full bg-secondary"
-              />
-            )}
-            <View className="gap-0.5 p-3">
-              <Text variant="headline" numberOfLines={1}>
-                {item.patient.name || t('common.untitled')}
-              </Text>
-              <Text variant="footnote">
-                {t('home.procedures', { count: item.patient.procedureCount })}
-              </Text>
-              <Text variant="footnote">
-                {new Date(item.updatedAt).toLocaleDateString(i18n.language)}
-              </Text>
-            </View>
-          </Pressable>
-        )}
+              {selected ? (
+                <View
+                  className={`absolute right-2 top-2 size-6 items-center justify-center rounded-full border-2 ${isSelected ? 'border-primary bg-primary' : 'border-white bg-black/30'}`}
+                >
+                  {isSelected ? <Icon as={Check} size={14} className="text-white" /> : null}
+                </View>
+              ) : null}
+              <View className="gap-0.5 p-3">
+                <Text variant="headline" numberOfLines={1}>
+                  {item.patient.name || t('common.untitled')}
+                </Text>
+                <Text variant="footnote">
+                  {t('home.procedures', { count: item.patient.procedureCount })}
+                </Text>
+                <Text variant="footnote">
+                  {new Date(item.updatedAt).toLocaleDateString(i18n.language)}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        }}
       />
       <BottomSheet
         visible={menuItem !== null}
@@ -143,6 +202,15 @@ export default function CollagesScreen() {
               const item = menuItem;
               setMenuItem(null);
               if (item) open(item);
+            }}
+          />
+          <Row
+            label={t('home.select')}
+            right={<Icon as={CheckSquare} size={18} />}
+            onPress={() => {
+              const item = menuItem;
+              setMenuItem(null);
+              if (item) setSelected([item.id]);
             }}
           />
           {menuItem?.isDraft ? null : (
@@ -185,6 +253,25 @@ export default function CollagesScreen() {
           },
         ]}
         onClose={() => setToDelete(null)}
+      />
+      <ConfirmDialog
+        open={confirmMany}
+        title={t('home.deleteManyTitle', { count: selected?.length ?? 0 })}
+        message={t('home.deleteManyMessage')}
+        actions={[
+          { label: t('common.cancel') },
+          {
+            label: t('common.delete'),
+            destructive: true,
+            emphasized: true,
+            onPress: async () => {
+              for (const id of selected ?? []) await removeCollage(db, id);
+              setSelected(null);
+              reload();
+            },
+          },
+        ]}
+        onClose={() => setConfirmMany(false)}
       />
       <ConfirmDialog
         open={notice !== null}

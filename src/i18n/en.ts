@@ -21,6 +21,13 @@ export const en = {
     camera: 'Take photo',
     procedures: 'Procedures: {{count}}',
     draft: 'Draft',
+    saved: 'Saved',
+    select: 'Select',
+    selectedCount: '{{count}} selected',
+    deleteManyTitle: 'Delete {{count}} collages?',
+    deleteManyMessage:
+      'The selected collages and their patient data will be removed from Picure. Gallery photos are not touched.',
+    cancelSelection: 'Cancel selection',
     deleteDraftTitle: 'Delete this draft?',
     deleteDraftMessage: 'The unfinished collage will be removed from Picure.',
   },
