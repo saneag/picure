@@ -168,6 +168,25 @@ export default function EditorScreen() {
     });
   };
 
+  const onSavePress = async () => {
+    if (!draft.slots.some((s) => s === null)) return setSaveOpen(true);
+    setBusy(true);
+    try {
+      await saveAsDraft(db, draft);
+      leaving.current = true;
+      api.markSaved();
+      api.clear();
+      router.dismissTo('/');
+    } catch {
+      setDialog({
+        title: t('save.failed'),
+        actions: [{ label: t('common.ok'), emphasized: true }],
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const runSave = async (options: SaveOptions) => {
     setBusy(true);
     setSaveOpen(false);
@@ -238,7 +257,7 @@ export default function EditorScreen() {
               size="icon"
               accessibilityLabel={t('common.save')}
               disabled={!hasAnyImage || busy}
-              onPress={() => setSaveOpen(true)}
+              onPress={onSavePress}
             >
               <Icon as={Save} size={22} />
             </Button>
