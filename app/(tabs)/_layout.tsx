@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'nativewind';
+import { navigateOnce } from '@/lib/navigate-once';
 import { useDraft } from '@/features/collage/draft-context';
 
 export default function TabsLayout() {
@@ -14,14 +15,16 @@ export default function TabsLayout() {
   const { startNew } = useDraft();
   const insets = useSafeAreaInsets();
 
-  const createNew = () => {
-    startNew();
-    router.push('/collage/editor');
-  };
-  const takePhoto = () => {
-    startNew();
-    router.push({ pathname: '/camera', params: { from: 'home' } });
-  };
+  const createNew = () =>
+    navigateOnce(() => {
+      startNew();
+      router.push('/collage/editor');
+    });
+  const takePhoto = () =>
+    navigateOnce(() => {
+      startNew();
+      router.push({ pathname: '/camera', params: { from: 'home' } });
+    });
   return (
     <Tabs
       screenOptions={{

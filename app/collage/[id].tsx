@@ -1,3 +1,4 @@
+import { navigateOnce } from '@/lib/navigate-once';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Download, Pencil, Trash2 } from 'lucide-react-native';
@@ -52,8 +53,10 @@ export default function CollageDetailScreen() {
   }
 
   const edit = () => {
-    startFrom(collage);
-    router.push('/collage/editor');
+    navigateOnce(() => {
+      startFrom(collage);
+      router.push('/collage/editor');
+    });
   };
 
   const exportToGallery = async () => {

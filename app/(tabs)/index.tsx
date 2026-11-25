@@ -17,6 +17,7 @@ import { listCollages } from '@/db/collages-repo';
 import { CollageCanvas } from '@/features/collage/CollageCanvas';
 import { useDraft } from '@/features/collage/draft-context';
 import type { SavedCollage } from '@/features/collage/types';
+import { navigateOnce } from '@/lib/navigate-once';
 import { removeCollage } from '@/services/collage-service';
 import { saveToGalleryAlbum } from '@/services/gallery';
 
@@ -54,9 +55,11 @@ export default function CollagesScreen() {
   }, [selected !== null]);
 
   const open = (item: SavedCollage) => {
-    if (!item.isDraft) return router.push(`/collage/${item.id}`);
-    startFrom(item);
-    router.push('/collage/editor');
+    navigateOnce(() => {
+      if (!item.isDraft) return router.push(`/collage/${item.id}`);
+      startFrom(item);
+      router.push('/collage/editor');
+    });
   };
 
   const exportToGallery = async (item: SavedCollage) => {
